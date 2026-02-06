@@ -178,16 +178,24 @@ solveBtn.addEventListener("click", async () => {
 
     solveBtnText.innerHTML =
       '<span class="loading"></span>Getting AI answers...';
-    const answers = await getAIAnswers(response.cleanedText);
+    const aiResponse = await getAIAnswers(response.cleanedText);
+
+    // Format the answers nicely
+    const formattedAnswers = formatAnswers(response.questions, aiResponse);
 
     // Display answers
-    answerText.textContent = answers;
+    answerText.textContent = formattedAnswers;
     answerBox.classList.add("visible");
 
-    // Also copy to clipboard
-    await navigator.clipboard.writeText(answers);
+    // Copy to clipboard
+    await navigator.clipboard.writeText(formattedAnswers);
 
-    showStatus("✓ Answers generated and copied to clipboard!", "success");
+    // Auto-select answers on the page
+    solveBtnText.innerHTML =
+      '<span class="loading"></span>Selecting answers...';
+    await autoSelectAnswers(tab.id, aiResponse);
+
+    showStatus("✓ Answers selected and copied to clipboard!", "success");
   } catch (error) {
     console.error("Error:", error);
     showStatus(`Error: ${error.message}`, "error");
@@ -213,17 +221,136 @@ async function extractQuestions(tabId) {
   }
 }
 
+// Format answers nicely
+function formatAnswers(questions, aiResponse) {
+  let formatted = "";
+
+  // Parse AI response to extract answer letters
+  const answerMatches = aiResponse.match(/Question \d+:\s*([A-D])/gi);
+
+  if (!answerMatches) {
+    return aiResponse; // Return as-is if parsing fails
+  }
+
+  questions.forEach((question, index) => {
+    const questionNum = index + 1;
+    const answerMatch = answerMatches[index];
+
+    if (answerMatch) {
+      const answerLetter = answerMatch.match(/([A-D])/i)[1];
+
+      // Extract just the question text (first line, usually ends with ?)
+      const questionText = question.split("\n")[0].trim();
+
+      // Try to find the answer text from the options
+      const optionMatch = question.match(
+        new RegExp(`${answerLetter}\\)\\s*([^\\n]+)`, "i"),
+      );
+      const answerText = optionMatch ? optionMatch[1].trim() : answerLetter;
+
+      formatted += `${questionNum}. ${questionText}\n`;
+      formatted += `   Answer: ${answerLetter}) ${answerText}\n\n`;
+    }
+  });
+
+  return formatted || aiResponse;
+}
+
+// Auto-select answers on the page
+async function autoSelectAnswers(tabId, aiResponse) {
+  try {
+    // Parse answer letters from AI response
+    const answerMatches = aiResponse.match(/Question \d+:\s*([A-D])/gi);
+
+    if (!answerMatches) {
+      console.log("Could not parse answers for auto-selection");
+      return;
+    }
+
+    const answers = answerMatches.map((match) => match.match(/([A-D])/i)[1]);
+
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: selectAnswersOnPage,
+      args: [answers],
+    });
+  } catch (error) {
+    console.error("Error auto-selecting answers:", error);
+  }
+}
+
+// Function injected into page to select answers
+function selectAnswersOnPage(answers) {
+  console.log("Attempting to select answers:", answers);
+
+  // Find all question containers
+  const questionSelectors = [
+    '[data-test="quiz-question"]',
+    ".rc-FormPartsQuestion",
+    ".rc-QuizQuestion",
+    ".assessment-question",
+  ];
+
+  let questionElements = [];
+  for (const selector of questionSelectors) {
+    questionElements = document.querySelectorAll(selector);
+    if (questionElements.length > 0) break;
+  }
+
+  if (questionElements.length === 0) {
+    console.log("No question elements found");
+    return;
+  }
+
+  answers.forEach((answer, index) => {
+    if (index >= questionElements.length) return;
+
+    const questionEl = questionElements[index];
+
+    // Find radio buttons or checkboxes
+    const inputs = questionEl.querySelectorAll(
+      'input[type="radio"], input[type="checkbox"]',
+    );
+
+    // Map answer letter to index (A=0, B=1, C=2, D=3)
+    const answerIndex = answer.charCodeAt(0) - 65; // 'A' = 65 in ASCII
+
+    if (inputs[answerIndex]) {
+      // Click the input
+      inputs[answerIndex].click();
+      console.log(`Selected answer ${answer} for question ${index + 1}`);
+
+      // Also try clicking the label if it exists
+      const label = questionEl.querySelector(
+        `label[for="${inputs[answerIndex].id}"]`,
+      );
+      if (label) {
+        label.click();
+      }
+    }
+  });
+}
+
 // Get AI answers from Gemini
 async function getAIAnswers(questions) {
   const modelNames = [
-    "gemini-2.5-flash", // best default
-    "gemini-2.5-pro", // best reasoning
-    "gemini-2.5-flash-lite", // cheap fallback
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash-lite",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
   ];
-  const prompt = `You are an expert tutor helping students understand quiz questions.
-Provide clear answers and explanations.
+
+  const prompt = `You are a quiz answering assistant. For each question, provide ONLY the correct option letter (A, B, C, or D).
+
+CRITICAL: Format your response EXACTLY like this:
+Question 1: A
+Question 2: C
+Question 3: B
+Question 4: D
+Question 5: A
+
+Do NOT add any explanations, numbers in parentheses, or extra text. Just the question number and letter.
 
 Questions:
 ${questions}`;
@@ -236,8 +363,8 @@ ${questions}`;
       },
     ],
     generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 2048,
+      temperature: 0.1,
+      maxOutputTokens: 500,
     },
   };
 
@@ -300,7 +427,7 @@ function setButtonLoading(button, loading, text) {
   }
 }
 
-// Direct extraction function (same as before)
+// Direct extraction function
 function extractQuestionsDirectly() {
   const questions = [];
 
