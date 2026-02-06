@@ -24,11 +24,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // Load API key from storage
 async function loadApiKey() {
-  const result = await chrome.storage.local.get(["geminiApiKey"]);
-  if (result.geminiApiKey) {
-    currentApiKey = result.geminiApiKey;
-    updateApiStatus(true);
-  } else {
+  try {
+    const result = await chrome.storage.local.get(["geminiApiKey"]);
+    if (result.geminiApiKey) {
+      currentApiKey = result.geminiApiKey;
+      updateApiStatus(true);
+    } else {
+      updateApiStatus(false);
+      apiSection.classList.remove("hidden");
+    }
+  } catch (error) {
+    console.error("Error loading API key:", error);
     updateApiStatus(false);
     apiSection.classList.remove("hidden");
   }
@@ -75,13 +81,27 @@ saveApiBtn.addEventListener("click", async () => {
     return;
   }
 
-  // Save to storage
-  await chrome.storage.local.set({ geminiApiKey: apiKey });
-  currentApiKey = apiKey;
+  try {
+    // Save to storage
+    await chrome.storage.local.set({ geminiApiKey: apiKey });
+    currentApiKey = apiKey;
 
-  updateApiStatus(true);
-  showStatus("API key saved successfully!", "success");
-  apiKeyInput.value = "";
+    // Update UI
+    updateApiStatus(true);
+    showStatus("API key saved successfully!", "success");
+
+    // Clear input and hide section
+    apiKeyInput.value = "";
+    apiSection.classList.add("hidden");
+
+    // Hide success message after 2 seconds
+    setTimeout(() => {
+      hideStatus();
+    }, 2000);
+  } catch (error) {
+    console.error("Error saving API key:", error);
+    showStatus("Failed to save API key. Please try again.", "error");
+  }
 });
 
 // Copy questions only
@@ -121,6 +141,9 @@ copyBtn.addEventListener("click", async () => {
 
 // Solve questions with AI
 solveBtn.addEventListener("click", async () => {
+  // Reload API key to make sure we have the latest
+  await loadApiKey();
+
   if (!currentApiKey) {
     showStatus("Please configure your Gemini API key first", "error");
     apiSection.classList.remove("hidden");
@@ -192,15 +215,15 @@ async function extractQuestions(tabId) {
 
 // Get AI answers from Gemini
 async function getAIAnswers(questions) {
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentApiKey}`;
-
-  const prompt = `You are an expert tutor helping students understand and solve quiz questions. Below are questions from a Coursera quiz. For each question:
-
-1. Provide a clear, detailed answer
-2. Explain the reasoning behind the answer
-3. If it's a multiple choice question, indicate which option is correct and why
-
-Please format your response clearly with question numbers and detailed explanations.
+  const modelNames = [
+    "gemini-2.5-flash", // best default
+    "gemini-2.5-pro", // best reasoning
+    "gemini-2.5-flash-lite", // cheap fallback
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+  ];
+  const prompt = `You are an expert tutor helping students understand quiz questions.
+Provide clear answers and explanations.
 
 Questions:
 ${questions}`;
@@ -208,11 +231,8 @@ ${questions}`;
   const requestBody = {
     contents: [
       {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
+        role: "user",
+        parts: [{ text: prompt }],
       },
     ],
     generationConfig: {
@@ -221,33 +241,34 @@ ${questions}`;
     },
   };
 
-  try {
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+  let lastError = null;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || "Failed to get AI response");
+  for (const modelName of modelNames) {
+    try {
+      const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${currentApiKey}`;
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        lastError = err.error?.message || response.statusText;
+        continue;
+      }
+
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
+    } catch (err) {
+      lastError = err.message;
     }
-
-    const data = await response.json();
-
-    if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-      throw new Error("Invalid response from Gemini API");
-    }
-
-    return data.candidates[0].content.parts[0].text;
-  } catch (error) {
-    if (error.message.includes("API_KEY_INVALID")) {
-      throw new Error("Invalid API key. Please check your Gemini API key.");
-    }
-    throw error;
   }
+
+  throw new Error(
+    `All models failed. Last error: ${lastError}. Check your API key permissions.`,
+  );
 }
 
 // Utility: Show status message
