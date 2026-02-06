@@ -3,80 +3,325 @@
   <head>
     <meta charset="UTF-8" />
     <style>
-      body {
-        width: 300px;
-        padding: 15px;
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      * {
         margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
 
-      h2 {
-        margin: 0 0 15px 0;
-        font-size: 16px;
-        color: #333;
+      body {
+        width: 380px;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: #ffffff;
+        color: #000000;
       }
 
-      button {
+      .header {
+        padding: 20px;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .header h1 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 4px;
+        letter-spacing: -0.3px;
+      }
+
+      .header p {
+        font-size: 13px;
+        color: #666666;
+      }
+
+      .content {
+        padding: 20px;
+      }
+
+      .api-section {
+        margin-bottom: 20px;
+      }
+
+      .api-section.hidden {
+        display: none;
+      }
+
+      .input-group {
+        margin-bottom: 12px;
+      }
+
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 6px;
+        color: #000000;
+      }
+
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d0d0d0;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.2s;
+        background: #ffffff;
+      }
+
+      input[type="text"]:focus,
+      input[type="password"]:focus {
+        outline: none;
+        border-color: #000000;
+      }
+
+      .btn {
         width: 100%;
         padding: 12px;
-        background-color: #0056d2;
-        color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         font-size: 14px;
-        font-weight: 600;
+        font-weight: 500;
         cursor: pointer;
-        transition: background-color 0.2s;
+        transition: all 0.2s;
+        font-family: inherit;
       }
 
-      button:hover {
-        background-color: #004bb5;
+      .btn-primary {
+        background: #000000;
+        color: #ffffff;
       }
 
-      button:active {
-        background-color: #003d8f;
+      .btn-primary:hover:not(:disabled) {
+        background: #2d2d2d;
+      }
+
+      .btn-primary:active:not(:disabled) {
+        transform: scale(0.98);
+      }
+
+      .btn-secondary {
+        background: #f5f5f5;
+        color: #000000;
+        border: 1px solid #e0e0e0;
+        margin-top: 8px;
+      }
+
+      .btn-secondary:hover:not(:disabled) {
+        background: #ebebeb;
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
 
       #status {
-        margin-top: 12px;
-        padding: 10px;
-        border-radius: 4px;
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 6px;
         font-size: 13px;
-        text-align: center;
+        line-height: 1.5;
         display: none;
       }
 
       #status.success {
-        background-color: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
+        background-color: #f0f0f0;
+        color: #000000;
+        border: 1px solid #d0d0d0;
       }
 
       #status.error {
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
+        background-color: #fff5f5;
+        color: #d32f2f;
+        border: 1px solid #ffcdd2;
       }
 
       #status.info {
-        background-color: #d1ecf1;
-        color: #0c5460;
-        border: 1px solid #bee5eb;
+        background-color: #f5f5f5;
+        color: #555555;
+        border: 1px solid #e0e0e0;
       }
 
       .stats {
-        margin-top: 10px;
+        margin-top: 12px;
         font-size: 12px;
-        color: #666;
+        color: #666666;
+        text-align: center;
+      }
+
+      .api-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        background: #f8f8f8;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        font-size: 13px;
+      }
+
+      .api-status .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+
+      .api-status .status-dot.active {
+        background: #4caf50;
+      }
+
+      .api-status .status-dot.inactive {
+        background: #9e9e9e;
+      }
+
+      .api-status .status-text {
+        flex: 1;
+        color: #333333;
+      }
+
+      .api-status button {
+        background: none;
+        border: none;
+        color: #666666;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 4px 8px;
+        text-decoration: underline;
+      }
+
+      .api-status button:hover {
+        color: #000000;
+      }
+
+      .loading {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #000000;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .answer-box {
+        margin-top: 16px;
+        padding: 16px;
+        background: #f9f9f9;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        display: none;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .answer-box.visible {
+        display: block;
+      }
+
+      .answer-box h3 {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: #000000;
+      }
+
+      .answer-box pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: inherit;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #333333;
+      }
+
+      .help-text {
+        font-size: 12px;
+        color: #888888;
+        margin-top: 8px;
+        line-height: 1.4;
+      }
+
+      .help-text a {
+        color: #000000;
+        text-decoration: underline;
       }
     </style>
   </head>
   <body>
-    <h2>📋 Coursera Question Copier</h2>
-    <button id="copyBtn">Copy All Questions</button>
-    <div id="status"></div>
-    <div id="stats" class="stats"></div>
+    <div class="header">
+      <h1>Coursera Solver</h1>
+      <p>AI-powered question answering</p>
+    </div>
+
+    <div class="content">
+      <!-- API Key Status -->
+      <div id="apiStatusBar" class="api-status">
+        <div style="display: flex; align-items: center">
+          <span class="status-dot inactive" id="statusDot"></span>
+          <span class="status-text" id="statusText">No API key configured</span>
+        </div>
+        <button id="changeApiBtn">Change</button>
+      </div>
+
+      <!-- API Key Input Section (initially hidden) -->
+      <div id="apiSection" class="api-section hidden">
+        <div class="input-group">
+          <label for="apiKey">Gemini API Key</label>
+          <input
+            type="password"
+            id="apiKey"
+            placeholder="Enter your Gemini API key"
+          />
+          <p class="help-text">
+            Get your free API key from
+            <a href="https://aistudio.google.com/app/apikey" target="_blank"
+              >Google AI Studio</a
+            >
+          </p>
+        </div>
+        <button class="btn btn-primary" id="saveApiBtn">Save API Key</button>
+      </div>
+
+      <!-- Main Actions -->
+      <div id="mainActions" class="actions">
+        <button class="btn btn-primary" id="solveBtn">
+          <span id="solveBtnText">Solve Questions</span>
+        </button>
+        <button class="btn btn-secondary" id="copyBtn">
+          Copy Questions Only
+        </button>
+      </div>
+
+      <!-- Status Messages -->
+      <div id="status"></div>
+      <div id="stats" class="stats"></div>
+
+      <!-- Answer Display -->
+      <div id="answerBox" class="answer-box">
+        <h3>AI Answers:</h3>
+        <pre id="answerText"></pre>
+      </div>
+    </div>
 
     <script src="popup.js"></script>
   </body>
