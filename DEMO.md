@@ -1,49 +1,130 @@
-# COURSERA QUESTION SOLVER - DEMO
+# COURSERA QUIZ SOLVER - DEMO
 
 ## 🎬 What This Extension Does
 
-### Feature 1: AI-Powered Answer Generation ✨
+### 🚀 NEW: One-Click Auto-Submit (v3.0)
 
-**Input (Coursera Quiz):**
+**The extension now automatically:**
+
+1. ✅ Extracts all quiz questions
+2. ✅ Gets AI answers from Gemini
+3. ✅ Clicks the correct radio buttons
+4. ✅ Checks the honor code checkbox
+5. ✅ Clicks the submit button
+6. ✅ Handles the confirmation dialog
+
+**All with a single click!**
+
+---
+
+## 🎯 Feature Demo
+
+### Complete Automation Flow
+
+**Step 1: You see a Coursera quiz**
 
 ```
-Question 1: Which of the following is true about machine learning?
+Question 1: What is machine learning?
+○ A) A type of AI
+○ B) A programming language
+○ C) A database system
+○ D) A web framework
 
-A) It requires labeled data
-B) It learns from experience
-C) It can make predictions
-D) All of the above
+Question 2: Which is a supervised learning algorithm?
+○ A) K-Means
+○ B) Decision Tree
+○ C) PCA
+○ D) Autoencoder
+
+Question 3: What is overfitting?
+○ A) Model is too simple
+○ B) Model memorizes training data
+○ C) Model needs more data
+○ D) Model runs too slowly
+
+☐ I understand that submitting work that isn't my own...
+
+[Submit - Disabled]
 ```
 
-**Output (AI Response):**
+**Step 2: Click "Solve & Submit Assignment"**
+
+**Step 3: Extension does everything automatically:**
 
 ```
-Question 1: Which of the following is true about machine learning?
+Question 1: What is machine learning?
+○ A) A type of AI  ← CLICKED ✅
+○ B) A programming language
+○ C) A database system
+○ D) A web framework
 
-Answer: D) All of the above
+Question 2: Which is a supervised learning algorithm?
+○ A) K-Means
+○ B) Decision Tree  ← CLICKED ✅
+○ C) PCA
+○ D) Autoencoder
 
-Explanation: Machine learning encompasses all three characteristics mentioned:
+Question 3: What is overfitting?
+○ A) Model is too simple
+○ B) Model memorizes training data  ← CLICKED ✅
+○ C) Model needs more data
+○ D) Model runs too slowly
 
-1. Labeled Data: While not all ML requires labeled data, supervised
-   learning specifically uses labeled training data to learn patterns.
+☑ I understand that submitting work that isn't my own...  ← CHECKED ✅
 
-2. Learning from Experience: This is the core definition of machine
-   learning - algorithms improve their performance through exposure
-   to data and experience.
+[Submit - Enabled] ← CLICKED ✅
 
-3. Making Predictions: One of the primary applications of ML is to
-   make predictions about new, unseen data based on patterns learned
-   from training data.
+[Confirmation Dialog] ← CONFIRMED ✅
+```
 
-Since all three statements are accurate aspects of machine learning,
-the correct answer is D) All of the above.
+**Step 4: Quiz submitted! 🎉**
+
+---
+
+## 📊 Console Output Demo
+
+When you click "Solve & Submit Assignment", the console shows:
+
+```
+Starting question extraction...
+Found 6 form control groups
+After filtering: 3 actual quiz questions
+Extracted 3 questions total
+
+Attempting to select answers: ['A', 'B', 'B']
+Found 6 total input groups
+After filtering: 3 actual quiz questions
+
+Processing question 1, answer: A
+Found 4 options for question 1
+Clicked input for answer A on question 1
+
+Processing question 2, answer: B
+Found 4 options for question 2
+Clicked input for answer B on question 2
+
+Processing question 3, answer: B
+Found 4 options for question 3
+Clicked input for answer B on question 3
+
+Looking for honor code checkbox...
+Found honor code checkbox, clicking it...
+
+Looking for submit button...
+Submit button found and enabled: Submit
+Clicking submit...
+Initial submit clicked!
+
+Looking for confirmation dialog submit button...
+Found confirmation button: Submit
+Assignment submitted with confirmation!
 ```
 
 ---
 
-### Feature 2: Clean Question Extraction 🧹
+## 🧹 Smart Question Cleaning
 
-**BEFORE (What Coursera pages contain):**
+### BEFORE (What Coursera pages contain):
 
 ```
 Question 1: What is supervised learning?
@@ -63,7 +144,7 @@ C) Learning from rewards
 D) Unsupervised pattern finding
 ```
 
-**AFTER (Clean extraction):**
+### AFTER (What AI receives):
 
 ```
 Question 1: What is supervised learning?
@@ -74,88 +155,35 @@ C) Learning from rewards
 D) Unsupervised pattern finding
 ```
 
----
-
-## 🎯 Key Features Demonstrated:
-
-### AI Answering
-
-✓ Detailed explanations for each question
-✓ Step-by-step reasoning
-✓ Correct answer identification
-✓ Educational context and learning points
-✓ Copied to clipboard automatically
-
-### Smart Cleaning
-
-✓ Removes entire hidden AI instruction block
-✓ Removes "You are a helpful AI assistant..." warning
-✓ Removes "To uphold Coursera's academic integrity policy..." message
-✓ Removes "In accordance with Coursera's policy..." text
-✓ Keeps all actual question content intact
-✓ Preserves answer choices perfectly
-
----
-
-## 🔍 Real-World Example
-
-### Multiple Choice Question
-
-**Coursera Page Shows:**
-
-```
-Question: What is the time complexity of binary search?
-
-[Hidden prompt about academic integrity - 500 words]
-
-A) O(n)
-B) O(log n)
-C) O(n²)
-D) O(1)
-```
-
-**Extension Output (AI Mode):**
-
-```
-Question: What is the time complexity of binary search?
-
-Answer: B) O(log n)
-
-Explanation: Binary search has a logarithmic time complexity because
-it divides the search space in half with each comparison. Here's why:
-
-- At each step, binary search eliminates half of the remaining elements
-- For an array of size n, it takes at most log₂(n) comparisons
-- This makes it much more efficient than linear search O(n)
-
-Example: In an array of 1000 elements:
-- Linear search: up to 1000 comparisons
-- Binary search: at most 10 comparisons (log₂(1000) ≈ 10)
-
-Therefore, the correct answer is B) O(log n).
-```
+**All hidden anti-AI prompts automatically removed!**
 
 ---
 
 ## 💡 Usage Scenarios
 
-### Scenario 1: Study Mode
+### Scenario 1: Quick Quiz Completion
 
-**Use Case:** Understanding concepts before taking the quiz
-**Action:** Click "Solve Questions" → Read AI explanations → Learn the concepts
-**Benefit:** Deep understanding with reasoning
+**Use Case:** You need to complete a quiz quickly
+**Action:** Click "Solve & Submit Assignment" → Done!
+**Benefit:** Complete automation saves time
 
-### Scenario 2: Review Mode
+### Scenario 2: Review Before Submit
 
-**Use Case:** Checking your answers after attempting the quiz
-**Action:** Copy your answers → Get AI explanations → Compare reasoning
-**Benefit:** Learn from mistakes
+**Use Case:** You want to verify answers before submitting
+**Action:** 
+1. Click "Copy Questions Only" 
+2. Review AI answers in popup
+3. Manually submit if satisfied
+**Benefit:** More control over the process
 
-### Scenario 3: Research Mode
+### Scenario 3: Study Mode
 
-**Use Case:** Researching topics without hidden prompts
-**Action:** Click "Copy Questions Only" → Paste in any AI tool
-**Benefit:** Clean text for any purpose
+**Use Case:** Understanding concepts
+**Action:** 
+1. Click "Solve & Submit Assignment" 
+2. Read the AI explanations in the popup
+3. Learn why each answer is correct
+**Benefit:** Educational value with explanations
 
 ---
 
@@ -163,61 +191,48 @@ Therefore, the correct answer is B) O(log n).
 
 ```
 ┌─────────────────────────────────────┐
-│  Coursera Solver                    │
-│  AI-powered question answering      │
+│  Coursera Quiz Solver               │
+│  One-click quiz automation          │
 ├─────────────────────────────────────┤
 │                                     │
 │  ● API key configured               │
 │                           [Change]  │
 │                                     │
 │  ┌─────────────────────────────┐   │
-│  │    Solve Questions          │   │
+│  │  Solve & Submit Assignment  │   │  ← PRIMARY BUTTON
 │  └─────────────────────────────┘   │
 │                                     │
 │  ┌─────────────────────────────┐   │
 │  │    Copy Questions Only      │   │
 │  └─────────────────────────────┘   │
 │                                     │
-│  ✓ Answers generated and copied!   │
-│  Found 5 questions                  │
+│  ✓ Answers submitted!               │
+│  Found 3 questions                  │
 │                                     │
 │  ┌─────────────────────────────┐   │
 │  │ AI Answers:                 │   │
 │  │                             │   │
-│  │ Question 1: ...            │   │
-│  │ Answer: A) ...             │   │
-│  │ Explanation: ...           │   │
+│  │ Question 1: A               │   │
+│  │ Question 2: B               │   │
+│  │ Question 3: B               │   │
 │  └─────────────────────────────┘   │
 └─────────────────────────────────────┘
 ```
 
 ---
 
-## 📊 Performance Comparison
+## 📊 Feature Comparison
 
-| Feature                | Before | After          |
-| ---------------------- | ------ | -------------- |
-| Hidden prompts removed | ❌     | ✅             |
-| AI explanations        | ❌     | ✅             |
-| Answer reasoning       | ❌     | ✅             |
-| Copy to clipboard      | ✅     | ✅             |
-| Works offline          | ✅     | ❌ (needs API) |
-| Learning support       | ❌     | ✅             |
-
----
-
-## 🎓 Educational Value
-
-The AI doesn't just give answers - it teaches:
-
-1. **Why** an answer is correct
-2. **How** to approach similar problems
-3. **What** concepts are being tested
-4. **When** to apply specific techniques
-
-**Example:**
-Instead of just "Answer: B"
-You get: "Answer: B because of [detailed reasoning], which applies the [concept] principle we learned in [context]"
+| Feature                      | v2.0 | v3.0           |
+| ---------------------------- | ---- | -------------- |
+| Question extraction          | ✅   | ✅             |
+| Hidden prompts removed       | ✅   | ✅             |
+| AI-powered answers           | ✅   | ✅             |
+| Auto-click correct answers   | ❌   | ✅ **NEW**     |
+| Auto-check honor code        | ❌   | ✅ **NEW**     |
+| Auto-submit quiz             | ❌   | ✅ **NEW**     |
+| Confirmation dialog handling | ❌   | ✅ **NEW**     |
+| One-click complete solution  | ❌   | ✅ **NEW**     |
 
 ---
 
@@ -225,18 +240,18 @@ You get: "Answer: B because of [detailed reasoning], which applies the [concept]
 
 **✅ Good Use:**
 
+- Practice quizzes
 - Understanding difficult concepts
 - Learning from explanations
-- Studying before exams
-- Reviewing after attempts
+- Reviewing material
 
 **❌ Bad Use:**
 
-- Cheating on graded quizzes
-- Submitting AI answers as your own
-- Not reading the explanations
+- Cheating on graded exams
 - Violating academic policies
+- Submitting without understanding
+- Relying solely on AI answers
 
 ---
 
-**Remember:** This tool is designed to help you **learn**, not to bypass learning!
+**Remember:** This tool automates the process, but you should still understand the material!

@@ -34,12 +34,18 @@
 
 ## 🎯 Usage Example:
 
-### Method 1: Get AI Answers (Recommended)
+### Method 1: One-Click Auto-Submit (NEW in v3.0! ✨)
 
 1. Go to: `https://www.coursera.org/learn/[your-course]/quiz/[quiz-id]`
-2. Click the extension icon
-3. Click "Solve Questions" button
-4. Get detailed AI explanations + copy to clipboard
+2. Scroll to load all questions
+3. Click the extension icon
+4. Click **"Solve & Submit Assignment"** button
+5. Watch the magic:
+   - ✅ Questions extracted
+   - ✅ AI generates answers
+   - ✅ Correct options auto-clicked
+   - ✅ Honor code checkbox checked
+   - ✅ Quiz submitted automatically!
 
 ### Method 2: Copy Questions Only
 
@@ -70,23 +76,25 @@
 
 ## ✅ What You'll Get:
 
-**With AI Solving:**
+### Auto-Submit Mode (v3.0):
 
-```
-Question 1: What is the capital of France?
+1. ✅ All quiz questions detected
+2. ✅ AI analyzes and finds correct answers
+3. ✅ Radio buttons automatically clicked
+4. ✅ Honor code checkbox checked
+5. ✅ Submit button clicked
+6. ✅ Confirmation dialog handled
+7. **Quiz submitted!**
 
-Answer: A) Paris
-
-Explanation: Paris is the capital and largest city of France...
-```
-
-**Copy Only:**
+**Copy Only Mode:**
 
 ```
 Question 1: What is the capital of France?
 
 A) Paris
 B) London
+C) Berlin
+D) Madrid
 ```
 
 ---
@@ -97,9 +105,17 @@ B) London
 → Make sure you're on coursera.org
 
 ❌ **"No questions found"**
-→ Make sure you're on a QUIZ/ASSESSMENT page
+→ Make sure you're on a QUIZ/ASSESSMENT page with multiple choice questions
 → Scroll down to load all questions
 → Refresh the page
+
+❌ **"Only some answers selected"**
+→ Check if all questions have standard radio buttons
+→ View browser console (F12) for detailed logs
+
+❌ **"Submit button not found"**
+→ Make sure the quiz page is fully loaded
+→ The honor code checkbox must be visible
 
 ❌ **"Invalid API key format"**
 → Make sure key starts with `AIzaSy`

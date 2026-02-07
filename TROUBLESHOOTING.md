@@ -1,10 +1,68 @@
 # TROUBLESHOOTING GUIDE
 
-## 🆕 New in v2.0 - AI Features
+## 🆕 New in v3.0 - Auto-Submit Features
 
-### API Key Issues
+### Auto-Submit Issues
 
-#### ❌ "Invalid API key format"
+#### ❌ "Only some answers selected"
+
+**Solution:**
+
+- The extension filters for elements with 3-6 radio button options
+- Make sure all questions are multiple choice with radio buttons
+- Essay questions or other formats won't work
+- Check browser console (F12) for detailed logs:
+  ```
+  Found X total input groups
+  After filtering: Y actual quiz questions
+  ```
+
+#### ❌ "Wrong answers selected"
+
+**Possible causes:**
+
+- AI interpreted questions incorrectly
+- Question extraction missed some context
+- AI model gave incorrect answer
+
+**Solution:**
+
+1. Check the console for which answers were selected
+2. AI answers are not 100% accurate - verify important submissions
+3. Try running again - AI responses may vary
+4. Use "Copy Questions Only" to review before submitting
+
+#### ❌ "Submit button not found"
+
+**Solution:**
+
+- Make sure the quiz page is fully loaded
+- The honor code checkbox must be visible on the page
+- Check if the submit button has unusual styling
+- Console will show: `"Looking for submit button..."` - check what follows
+
+#### ❌ "Honor code checkbox not found"
+
+**Solution:**
+
+- Make sure there's a checkbox with text like "I understand that submitting..."
+- Some quizzes may not have this checkbox
+- The extension will still select answers even without it
+
+#### ❌ "Confirmation dialog not handled"
+
+**Solution:**
+
+- The extension waits 3 seconds for the dialog to appear
+- If dialog is slow to load, it might be missed
+- Manually click the confirmation if needed
+- Check console for: `"Looking for confirmation dialog submit button..."`
+
+---
+
+## 🔧 API Key Issues
+
+### ❌ "Invalid API key format"
 
 **Solution:**
 
@@ -13,7 +71,7 @@
 - Make sure there are no spaces before/after the key
 - Copy directly from Google AI Studio, don't type it
 
-#### ❌ "Failed to get AI response"
+### ❌ "Failed to get AI response"
 
 **Solution:**
 
@@ -25,7 +83,7 @@
 4. Try regenerating your API key
 5. Wait a few minutes and try again
 
-#### ❌ "API key invalid" error
+### ❌ "API key invalid" error
 
 **Solution:**
 
@@ -34,7 +92,7 @@
 - Delete old key and create a new one
 - Update in extension settings
 
-#### ❌ Green dot not showing after saving API key
+### ❌ Green dot not showing after saving API key
 
 **Solution:**
 
@@ -69,10 +127,10 @@
 **Solutions:**
 
 - Make sure you're on a QUIZ or ASSESSMENT page, not a video/reading page
+- Quiz pages must have multiple choice questions with radio buttons
 - Refresh the page (F5 or Ctrl+R)
 - Wait for the page to fully load before clicking the extension
 - Scroll down to ensure all questions are loaded
-- Some pages might have a different structure
 
 ### 4. Extension icon doesn't work / No popup appears
 
@@ -81,6 +139,7 @@
 1. **Reload the extension:**
    - Go to `chrome://extensions/`
    - Click the reload icon (circular arrow) for this extension
+
 2. **Reinstall the extension:**
    - Remove the extension
    - Close and reopen browser
@@ -90,14 +149,6 @@
    - Right-click the extension icon
    - Select "Inspect popup"
    - Check the Console tab for errors
-
-### 5. Questions copy but prompts are still there
-
-**Solution:**
-
-- The extension might need updating for new prompt patterns
-- Open an issue on GitHub with the prompt text
-- Manually add new patterns to `content.js`
 
 ---
 
@@ -113,24 +164,9 @@
 
 **Solutions:**
 
-- Try copying fewer questions at once
+- Try a quiz with fewer questions
 - Check your internet connection
 - Refresh and try again
-
-### ❌ AI answers seem incorrect
-
-**Remember:**
-
-- AI can make mistakes
-- Always verify answers
-- Use explanations to learn, not just copy
-- Cross-reference with course materials
-
-**Solutions:**
-
-- Ask for clarification in the AI output
-- Compare with course notes
-- Understand the reasoning, don't just trust blindly
 
 ### ❌ "Quota exceeded" error
 
@@ -141,25 +177,42 @@
   - 1,500 requests/day
 - Wait a few minutes/hours
 - Monitor usage in [Google AI Studio](https://aistudio.google.com/)
-- Consider upgrading if you need more (unlikely for normal use)
 
 ---
 
 ## 🔍 Debugging Steps
 
-### Check if content script is loaded:
+### Check the console for detailed logs:
 
 1. On Coursera page, press F12 to open DevTools
 2. Go to Console tab
-3. Look for: "Coursera Question Copier extension loaded"
-4. If not present, reload the page
+3. Click "Solve & Submit Assignment"
+4. Look for these messages:
 
-### Check extension popup errors:
+```
+Starting question extraction...
+Found X form control groups
+After filtering: Y actual quiz questions
+Extracted Y questions total
 
-1. Right-click extension icon
-2. Click "Inspect popup"
-3. Check Console tab for any red errors
-4. Share these errors if you need help
+Attempting to select answers: ['A', 'B', 'C']
+Processing question 1, answer: A
+Clicked input for answer A on question 1
+
+Looking for honor code checkbox...
+Found honor code checkbox, clicking it...
+
+Looking for submit button...
+Submit button found and enabled: Submit
+
+Looking for confirmation dialog submit button...
+```
+
+### Common console warnings:
+
+- `"Warning: Found X questions but have Y answers"` - Mismatch between detected questions and AI answers
+- `"Submit button not found"` - Submit button has unusual structure
+- `"No confirmation dialog found"` - Confirmation dialog didn't appear or was already handled
 
 ### Verify permissions:
 
@@ -169,46 +222,27 @@
    - ✓ Site access: On coursera.org
    - ✓ Permissions: activeTab, scripting, clipboardWrite, storage
 
-### Test API connection:
-
-1. Open popup
-2. Click "Solve Questions"
-3. Watch the Network tab in DevTools
-4. Look for requests to `generativelanguage.googleapis.com`
-5. Check for 200 OK status
-
 ---
 
 ## 🆘 Still Having Issues?
 
 ### Try these steps in order:
 
-1. **Clear browser cache**
+1. **Reload extension**
+   - Go to chrome://extensions/
+   - Click reload button on the extension
+
+2. **Refresh Coursera page**
+   - F5 or Ctrl+R
+
+3. **Clear browser cache**
    - Settings → Privacy → Clear browsing data
-   - Select "Cached images and files"
 
-2. **Disable other extensions temporarily**
-   - Some extensions may conflict
-   - Disable all except this one
-   - Test if it works
+4. **Restart browser**
+   - Close and reopen completely
 
-3. **Restart your browser**
-   - Completely close and reopen
-   - Try the extension again
-
-4. **Reinstall the extension**
-   - Remove completely
-   - Download fresh copy
-   - Install again
-
-5. **Check your browser version**
-   - This requires Chrome/Brave 88+
-   - Go to `chrome://version/` or `brave://version/`
-   - Update if needed
-
-6. **Test on a simple Coursera quiz**
-   - Try a free course quiz first
-   - Make sure you're logged into Coursera
+5. **Reinstall extension**
+   - Remove and install fresh copy
 
 ---
 
@@ -216,38 +250,19 @@
 
 If nothing works, provide:
 
-1. **Browser name and version**
-   - From `chrome://version/`
-
-2. **Error messages**
-   - Full text of any errors
-   - Screenshots help!
-
-3. **Coursera page URL**
-   - If not sensitive/private
-
-4. **Console errors**
-   - From DevTools → Console
-   - Both popup and page console
-
-5. **Steps to reproduce**
-   - What you clicked
-   - What happened
-   - What you expected
-
-6. **API key status**
-   - Is it configured?
-   - Green dot showing?
-   - When was it created?
+1. **Browser name and version** - From `chrome://version/`
+2. **Console output** - Full logs from F12 → Console
+3. **Error messages** - Screenshots help!
+4. **Coursera page URL** - If not sensitive/private
+5. **Steps to reproduce** - What you clicked and what happened
 
 ---
 
-## 🔐 Privacy & Security Concerns
+## 🔐 Privacy & Security
 
 ### "Is my API key safe?"
 
 **Yes:**
-
 - Stored in Chrome's encrypted local storage
 - Never transmitted except to Google's API
 - Not accessible by websites
@@ -256,56 +271,32 @@ If nothing works, provide:
 ### "Can Coursera detect this?"
 
 **Technical answer:**
-
 - Extension works client-side only
-- Doesn't modify Coursera's pages
-- Uses your browser normally
-- Like copying manually
+- Clicks are performed like normal user clicks
+- No server-side detection is triggered
 
 **Important:**
-
 - Still respect academic policies
 - Use for learning, not cheating
 - Understand the ethical implications
 
 ---
 
-## 💡 Performance Tips
-
-1. **Scroll through quiz first**
-   - Loads all questions before extracting
-   - Ensures nothing is missed
-
-2. **Close other tabs**
-   - Reduces browser memory usage
-   - Faster API responses
-
-3. **Use "Copy Questions Only" for speed**
-   - Faster than AI solving
-   - No API call needed
-   - Good for quick text extraction
-
-4. **Monitor API usage**
-   - Check Google AI Studio dashboard
-   - Stay within free tier limits
-
----
-
 ## 🆕 Version-Specific Issues
 
-### Upgrading from v1.0 to v2.0
+### Upgrading from v2.0 to v3.0
 
 1. **Remove old version**
    - Go to chrome://extensions/
-   - Remove "Coursera Question Copier v1.0"
+   - Remove old version
 
 2. **Install new version**
-   - Load v2.0 folder
-   - Configure API key
+   - Load v3.0 folder
+   - API key should still be saved
 
-3. **No data migration needed**
-   - Fresh start with new features
-   - API key stored separately
+3. **New button name**
+   - "Solve Questions" is now "Solve & Submit Assignment"
+   - Same key, now with auto-submit!
 
 ---
 
@@ -314,5 +305,5 @@ If nothing works, provide:
 1. ✓ Checking API key is configured correctly
 2. ✓ Reloading the extension
 3. ✓ Reloading the Coursera page
-4. ✓ Checking you're on an actual quiz/assessment page
-5. ✓ Verifying internet connection for AI features
+4. ✓ Checking you're on an actual quiz page with radio buttons
+5. ✓ Checking browser console for detailed error messages

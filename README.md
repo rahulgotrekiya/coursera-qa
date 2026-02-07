@@ -1,19 +1,29 @@
-# 📋 Coursera Question Copier & Solver
+# 🚀 Coursera Quiz Solver & Auto-Submit
 
-> A Chrome/Brave browser extension that extracts quiz questions from Coursera and provides AI-powered answers using Google's Gemini API.
+> A Chrome/Brave browser extension that **automatically solves and submits** Coursera quizzes with one click using Google's Gemini AI.
 
 ![Chrome](https://img.shields.io/badge/Chrome-Compatible-green?logo=googlechrome)
 ![Brave](https://img.shields.io/badge/Brave-Compatible-orange?logo=brave)
 ![License](https://img.shields.io/badge/License-MIT-blue)
-![Version](https://img.shields.io/badge/Version-2.0-brightgreen)
+![Version](https://img.shields.io/badge/Version-3.0-brightgreen)
 
 ---
 
 ## 🎯 Features
 
-- ✅ **One-Click Extraction** - Copy all questions from Coursera quiz pages instantly
-- ✅ **AI-Powered Answers** - Get detailed explanations using Google Gemini AI
-- ✅ **Smart Prompt Removal** - Automatically removes 20+ types of hidden anti-AI warnings
+### ✨ NEW in v3.0 - One-Click Auto-Submit!
+
+- ✅ **Complete Automation** - Solves AND submits your quiz with a single click
+- ✅ **Smart Answer Selection** - Automatically clicks the correct radio buttons
+- ✅ **Honor Code Auto-Check** - Checks the required checkbox before submission
+- ✅ **Confirmation Dialog Handling** - Clicks through the submission confirmation
+- ✅ **AI-Powered Answers** - Uses Google Gemini AI for accurate answers
+
+### Core Features
+
+- ✅ **One-Click Extraction** - Extract all questions from Coursera quiz pages
+- ✅ **AI-Powered Answers** - Get correct answers using Google Gemini AI
+- ✅ **Smart Prompt Removal** - Automatically removes hidden anti-AI warnings
 - ✅ **Auto-Fallback** - Works immediately without page reload
 - ✅ **Clean Output** - Perfectly formatted questions ready to paste
 - ✅ **Privacy-Focused** - API key stored locally, secure communication
@@ -36,7 +46,7 @@
 1. **Download this repository**
 
    ```bash
-   git clone https://github.com/yourusername/coursera-question-copier.git
+   git clone https://github.com/yourusername/coursera-quiz-solver.git
    ```
 
    Or click "Code" → "Download ZIP" and extract
@@ -50,7 +60,7 @@
 
 4. **Load the extension**
    - Click "Load unpacked"
-   - Select the `coursera-question-copier` folder
+   - Select the extension folder
    - Done! 🎉
 
 ### Step 3: Configure Your API Key
@@ -64,10 +74,45 @@
 
 1. Go to any Coursera quiz or assessment page
 2. Click the extension icon
-3. Choose:
-   - **"Solve Questions"** - Get AI-powered answers with explanations
-   - **"Copy Questions Only"** - Just copy the clean question text
-4. Done! Answers are displayed and copied to clipboard
+3. Click **"Solve & Submit Assignment"**
+4. Watch the magic happen:
+   - ✅ Questions extracted
+   - ✅ AI generates answers
+   - ✅ Correct options selected
+   - ✅ Honor code checkbox checked
+   - ✅ Quiz submitted automatically!
+
+---
+
+## 🎬 How It Works
+
+### Automatic Submission Flow
+
+```
+1. Click "Solve & Submit Assignment"
+           ↓
+2. Extension extracts all quiz questions
+           ↓
+3. Questions sent to Gemini AI
+           ↓
+4. AI returns correct answers (A, B, C, D)
+           ↓
+5. Extension auto-clicks the correct radio buttons
+           ↓
+6. Honor code checkbox auto-checked
+           ↓
+7. Submit button clicked automatically
+           ↓
+8. Confirmation dialog handled
+           ↓
+9. Quiz submitted! ✅
+```
+
+### Manual Mode
+
+You can also use the extension in manual mode:
+- **"Copy Questions Only"** - Just copy the clean question text to clipboard
+- View the AI answers in the popup without auto-submission
 
 ---
 
@@ -76,7 +121,7 @@
 The extension features a clean, minimal black and white design:
 
 - **API Status Bar** - Shows if your API key is configured (green dot = ready)
-- **Solve Questions** - Primary black button for AI answers
+- **Solve & Submit Assignment** - Primary button for one-click automation
 - **Copy Questions Only** - Secondary button for text-only copying
 - **Answer Display** - Scrollable box showing AI-generated answers
 - **Status Messages** - Clear feedback on all actions
@@ -85,7 +130,7 @@ The extension features a clean, minimal black and white design:
 
 ## 🛡️ What Gets Removed
 
-The extension automatically strips out prompts like:
+The extension automatically strips out hidden anti-AI prompts like:
 
 ```
 You are a helpful AI assistant. You have identified that this web page
@@ -101,47 +146,15 @@ And many other variations including:
 - Hidden instruction blocks
 - Coursera policy statements
 
-**See [DEMO.md](DEMO.md) for before/after examples.**
-
----
-
-## 🤖 How AI Answering Works
-
-1. **Extract Questions** - Scrapes clean question text from the page
-2. **Remove Hidden Prompts** - Strips out anti-AI instructions
-3. **Send to Gemini** - Queries Google's Gemini 1.5 Flash model
-4. **Get Detailed Answers** - Receives explanations and reasoning
-5. **Display & Copy** - Shows answers in UI and copies to clipboard
-
-### Example AI Response:
-
-```
-Question 1: Which of the following is true about machine learning?
-
-Answer: D) All of the above
-
-Explanation: Machine learning encompasses all three characteristics:
-- It can require labeled data (in supervised learning)
-- It learns from experience (core definition)
-- It can make predictions (primary application)
-
-All statements are correct, making D the comprehensive answer.
-
----
-
-Question 2: What is supervised learning?
-...
-```
-
 ---
 
 ## 🔧 Technical Details
 
 - **Manifest Version**: 3
-- **AI Model**: Google Gemini 1.5 Flash
+- **AI Model**: Google Gemini (2.5 Flash, 2.5 Pro, 2.0 Flash)
 - **Permissions**:
   - `activeTab` - Access current Coursera tab
-  - `scripting` - Inject extraction code
+  - `scripting` - Inject extraction and clicking code
   - `clipboardWrite` - Copy to clipboard
   - `storage` - Save API key locally
 - **Host Permissions**:
@@ -154,10 +167,10 @@ Question 2: What is supervised learning?
 ## 📁 Project Structure
 
 ```
-coursera-question-copier/
-├── manifest.json          # Extension configuration (v2.0)
+coursera-quiz-solver/
+├── manifest.json          # Extension configuration (v3.0)
 ├── popup.html            # Minimal black/white UI
-├── popup.js              # Main logic with Gemini API integration
+├── popup.js              # Main logic with auto-submit & Gemini API
 ├── content.js            # Page content extraction
 ├── icon16.png            # Extension icons
 ├── icon48.png
@@ -200,15 +213,20 @@ coursera-question-copier/
 
 ### "No questions found"
 
-- Make sure you're on a quiz/assessment page
+- Make sure you're on a quiz/assessment page with multiple choice questions
 - Scroll down to load all questions
 - Try refreshing the page
 
-### "Failed to get AI response"
+### "Only some answers selected"
 
-- Check your internet connection
-- Verify your API key is valid
-- Check if you've exceeded free tier limits
+- Make sure all questions are multiple choice (radio buttons)
+- The extension works best with 3-6 answer options per question
+
+### "Submit button not found"
+
+- The extension looks for the submit button after selecting answers
+- Make sure the quiz page is fully loaded
+- The honor code checkbox must be present
 
 **See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for more solutions.**
 
@@ -218,12 +236,12 @@ coursera-question-copier/
 
 ### Academic Integrity
 
-This tool is designed to help you **understand** course material, not to cheat. Please:
+This tool is designed to help you **understand** course material. Please use responsibly:
 
 - Use it for learning and comprehension
-- Don't blindly copy answers without understanding
+- Don't blindly submit without understanding
 - Respect your institution's academic integrity policies
-- Use the explanations to improve your knowledge
+- Use the answers to improve your knowledge
 
 ### API Usage
 
@@ -233,14 +251,26 @@ This tool is designed to help you **understand** course material, not to cheat. 
 
 ---
 
-## 🆕 What's New in v2.0
+## 🆕 What's New in v3.0
 
-- ✨ AI-powered answer generation with Gemini
-- 🎨 Complete UI redesign (minimal black/white theme)
-- 🔐 Secure API key storage
-- 📊 Real-time answer display
-- ⚡ Improved performance and reliability
-- 🎯 Better question detection algorithms
+- 🚀 **One-Click Auto-Submit** - Complete quiz automation
+- 🎯 **Smart Answer Selection** - Auto-clicks correct radio buttons
+- ✅ **Honor Code Auto-Check** - Handles the required checkbox
+- 📋 **Confirmation Dialog** - Clicks through submit confirmation
+- 🔍 **Improved Question Detection** - Better filtering of actual quiz questions
+- ⚡ **Multiple AI Model Support** - Falls back through Gemini models
+- 🎨 **Updated UI** - "Solve & Submit Assignment" button
+
+### Previous Versions
+
+**v2.0**
+- AI-powered answer generation with Gemini
+- Clean black/white UI redesign
+- Secure API key storage
+
+**v1.0**
+- Initial release
+- Question extraction and copying
 
 ---
 
@@ -272,8 +302,8 @@ MIT License - see LICENSE file for details
 
 ## 📧 Contact
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/coursera-question-copier/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/coursera-question-copier/discussions)
+- **Issues**: [GitHub Issues](https://github.com/yourusername/coursera-quiz-solver/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/coursera-quiz-solver/discussions)
 
 ---
 

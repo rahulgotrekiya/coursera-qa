@@ -24,47 +24,68 @@
 2. Paste your API key
 3. Click "Save API Key"
 4. Go to any Coursera quiz page
-5. Click extension → "Solve Questions"
-6. ✅ Get AI-powered answers!
+5. Click extension → **"Solve & Submit Assignment"**
+6. ✅ Watch the quiz get solved and submitted automatically!
+
+---
+
+## 🎯 What Happens When You Click
+
+When you click "Solve & Submit Assignment":
+
+```
+1. Questions extracted from page
+         ↓
+2. AI analyzes and generates answers
+         ↓
+3. Correct radio buttons auto-clicked
+         ↓
+4. Honor code checkbox checked
+         ↓
+5. Submit button clicked
+         ↓
+6. Confirmation dialog handled
+         ↓
+🎉 Quiz submitted!
+```
+
+**All automatically in one click!**
 
 ---
 
 ## 🎯 Two Usage Modes
 
-### Mode 1: AI Solver (Recommended)
+### Mode 1: Auto-Submit (NEW! ✨)
 
 ```
-Click "Solve Questions"
-↓
-Get detailed explanations
-↓
-Learn the concepts
-↓
-Ace your quiz!
+Click "Solve & Submit Assignment"
+         ↓
+Quiz answered AND submitted automatically
+         ↓
+You're done! 🎉
 ```
 
 **Best for:**
 
-- Understanding concepts
-- Learning reasoning
-- Study preparation
-- Concept review
+- Quick quiz completion
+- Timed assessments
+- Multiple quizzes in a row
 
 ### Mode 2: Copy Only
 
 ```
 Click "Copy Questions Only"
-↓
+         ↓
 Get clean question text
-↓
+         ↓
 Use anywhere
-↓
+         ↓
 No hidden prompts!
 ```
 
 **Best for:**
 
-- Quick text extraction
+- Manual review before submitting
 - Using other AI tools
 - Sharing with study groups
 - Offline reference
@@ -80,65 +101,60 @@ Question 1: What is machine learning?
 [500 words of hidden anti-AI prompts]
 A) A type of AI
 B) A programming language
+C) A database system
+D) A web framework
 ```
 
-### Output (AI Mode):
+### Output (Auto-Submit Mode):
 
-```
-Question 1: What is machine learning?
-
-Answer: A) A type of AI
-
-Explanation: Machine learning is a subset of
-artificial intelligence that enables systems
-to learn and improve from experience without
-being explicitly programmed. It uses algorithms
-to identify patterns in data...
-
-[Detailed reasoning and learning points]
-```
+1. ✅ Option A automatically selected (radio button clicked)
+2. ✅ Honor code checkbox checked
+3. ✅ Submit button clicked
+4. ✅ Confirmation dialog handled
+5. **Quiz submitted!**
 
 ---
 
 ## 💡 Pro Tips
 
-1. **Scroll First**: Load all questions before extracting
+1. **Scroll First**: Load all questions before running the extension
 2. **Green Dot**: Means API key is configured ✅
 3. **Free Tier**: 1,500 requests/day (plenty for students)
-4. **Copy Auto**: AI answers auto-copy to clipboard
-5. **Learn First**: Read explanations, don't just copy
+4. **One Click**: The extension handles everything automatically
+5. **Watch Console**: Open F12 → Console to see progress
 
 ---
 
-## ⚠️ Common Mistakes
+## ⚠️ Common Issues
 
 ❌ Not scrolling to load all questions
-❌ Forgetting to configure API key
-❌ Using on non-quiz pages
-❌ Not reading the AI explanations
-❌ Copying answers without understanding
+❌ Using on non-quiz pages (videos, readings)
+❌ Questions without radio buttons (essay questions won't work)
+❌ Very slow internet (API timeout)
 
-✅ Do scroll first
-✅ Do configure API key
-✅ Do use on quiz pages
-✅ Do read explanations
-✅ Do understand concepts
+✅ Do scroll to load all questions first
+✅ Do use on multiple choice quiz pages
+✅ Do check the console if issues occur
+✅ Do reload the extension after updates
 
 ---
 
 ## 🆘 Quick Troubleshooting
 
 **"No questions found"**
-→ Make sure you're on a quiz page, not video/reading
+→ Make sure you're on a quiz page with multiple choice questions
+
+**"Only some answers selected"**
+→ Some elements might not be standard radio buttons - check console for details
+
+**"Submit button not found"**
+→ Make sure the quiz is fully loaded and has a submit button visible
 
 **"Invalid API key"**
 → Get new key from [Google AI Studio](https://aistudio.google.com/app/apikey)
 
-**"This extension only works on Coursera"**
-→ Make sure URL contains coursera.org
-
-**Extension not appearing**
-→ Check chrome://extensions/ - is it enabled?
+**"Wrong answers selected"**
+→ The AI might not always be 100% accurate - verify important submissions
 
 ---
 
@@ -157,15 +173,14 @@ to identify patterns in data...
 **Use this to LEARN, not to CHEAT!**
 
 ✅ Study aid
-✅ Concept review
 ✅ Understanding difficult topics
-✅ Preparing for exams
+✅ Reviewing concepts
+✅ Practice quizzes
 
-❌ Cheating on graded work
 ❌ Academic dishonesty
 ❌ Violating course policies
-❌ Not understanding material
+❌ Submitting without understanding
 
 ---
 
-**Ready to go? Click the extension icon and start learning!** 🚀
+**Ready to go? Click "Solve & Submit Assignment" and watch the magic!** 🚀
