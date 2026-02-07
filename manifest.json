@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Coursera Question Copier",
-  "version": "1.0",
+  "version": "2.0",
   "description": "Copy all questions from Coursera pages with hidden prompts removed",
   "permissions": [
     "activeTab",
@@ -23,8 +23,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.coursera.org/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://*.coursera.org/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],

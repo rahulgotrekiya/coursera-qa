@@ -21,8 +21,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 function extractQuestionsFromPage() {
-  const questions = [];
-
   const questionSelectors = [
     '[data-test="quiz-question"]',
     ".rc-FormPartsQuestion",
@@ -38,18 +36,28 @@ function extractQuestionsFromPage() {
     'div[class*="FormPart"]',
   ];
 
-  let questionElements = [];
+  // Try ALL selectors and pick the one that returns the most valid-looking questions
+  let bestQuestions = [];
+  
   for (const selector of questionSelectors) {
     const elements = document.querySelectorAll(selector);
-    if (elements.length > 0) {
-      questionElements = Array.from(elements);
-      break;
+    if (elements.length > bestQuestions.length) {
+      // Filter to ensure they look like questions (basic check)
+      const validElements = Array.from(elements).filter(el => 
+        el.textContent.trim().length > 10 && 
+        (el.querySelector('input') || el.querySelectorAll('[role="radio"], [role="checkbox"]').length > 0 || el.textContent.includes('?'))
+      );
+      
+      if (validElements.length > bestQuestions.length) {
+        bestQuestions = validElements;
+      }
     }
   }
 
-  if (questionElements.length === 0) {
+  // Fallback if no specific selector worked well
+  if (bestQuestions.length === 0) {
     const allDivs = document.querySelectorAll("div, section, article");
-    questionElements = Array.from(allDivs).filter((el) => {
+    bestQuestions = Array.from(allDivs).filter((el) => {
       const text = el.textContent.trim();
       return (
         text.length > 20 &&
@@ -61,21 +69,61 @@ function extractQuestionsFromPage() {
     });
   }
 
-  for (const element of questionElements) {
+  const questions = [];
+  
+  for (const element of bestQuestions) {
     const clone = element.cloneNode(true);
 
-    const hiddenElements = clone.querySelectorAll(
-      '[hidden], [style*="display: none"], [style*="visibility: hidden"], [aria-hidden="true"]',
-    );
-    hiddenElements.forEach((el) => el.remove());
+    // Remove hidden elements and scripts
+    const removeSelectors = [
+      '[hidden]', 
+      '[style*="display: none"]', 
+      '[style*="visibility: hidden"]', 
+      '[aria-hidden="true"]',
+      "script", 
+      "style", 
+      "noscript"
+    ];
+    
+    clone.querySelectorAll(removeSelectors.join(', ')).forEach((el) => el.remove());
 
-    const scripts = clone.querySelectorAll("script, style, noscript");
-    scripts.forEach((el) => el.remove());
+    // --- ENHANCED OPTION EXTRACTION ---
+    // Try to find options and structure them explicitly
+    const optionContainers = clone.querySelectorAll('[role="radio"], [role="checkbox"], label, .rc-Option');
+    
+    // We want to avoid duplicating text if the option container is already part of the main text
+    // But we need to label them. 
+    // Strategy: text extraction with "A) ", "B) " injection.
+    
+    let optionsFound = 0;
+    if (optionContainers.length > 0) {
+      optionContainers.forEach(opt => {
+        // specific logic to avoid double counting if nested
+        if (opt.querySelector('[role="radio"]') || opt.querySelector('input')) return; // skip wrappers if we have inner
+
+        const optText = opt.textContent.trim();
+        if (optText.length > 0) {
+           // Basic heuristic to assign A, B, C, D
+           // This modifies the DOM of the clone before we get textContent
+           const prefix = String.fromCharCode(65 + optionsFound) + ") ";
+           
+           // Prepend option label to the element's text
+           // We wrap it in a span to be safe, or just insert text node
+           const prefixNode = document.createTextNode("\n" + prefix);
+           opt.insertBefore(prefixNode, opt.firstChild);
+           optionsFound++;
+        }
+      });
+    }
 
     let text = clone.textContent.trim();
 
     // Clean the text from anti-AI prompts
     text = removeAntiAIPrompts(text);
+    
+    // Clean up "Question X" headers that might be merged weirdly
+    // Example: "1. Question 1A prompt..." -> "A prompt..."
+    text = text.replace(/Question \d+/i, '').trim();
 
     if (text && text.length > 10) {
       questions.push(text);
