@@ -499,11 +499,47 @@ function selectAnswersOnPage(answers) {
           console.log("Submit button found but still disabled. Honor code may not have been checked properly.");
         } else {
           console.log("Submit button found and enabled:", submitBtn.textContent);
-          console.log("Clicking submit in 2 seconds...");
+          console.log("Clicking submit...");
+          submitBtn.click();
+          console.log("Initial submit clicked!");
+          
+          // Handle confirmation dialog - wait for it to appear then click confirm
           setTimeout(() => {
-            submitBtn.click();
-            console.log("Assignment submitted!");
-          }, 2000);
+            console.log("Looking for confirmation dialog submit button...");
+            
+            // Look for confirmation dialog buttons
+            const dialogBtns = Array.from(document.querySelectorAll('button'));
+            
+            // Try to find the "Submit" button in the confirmation dialog
+            let confirmBtn = dialogBtns.find(btn => {
+              const text = btn.textContent.toLowerCase().trim();
+              // The confirmation button usually says "Submit" and is not disabled
+              // Also check it's not the same button we already clicked
+              return text === 'submit' && !btn.disabled && btn !== submitBtn;
+            });
+            
+            // Also try looking for modal/dialog specific buttons
+            if (!confirmBtn) {
+              const modalBtns = document.querySelectorAll('[role="dialog"] button, .modal button, .cds-Modal button, [class*="Dialog"] button');
+              confirmBtn = Array.from(modalBtns).find(btn => {
+                const text = btn.textContent.toLowerCase().trim();
+                return (text === 'submit' || text.includes('confirm') || text === 'yes') && !btn.disabled;
+              });
+            }
+            
+            // Try primary button in any dialog
+            if (!confirmBtn) {
+              confirmBtn = document.querySelector('[role="dialog"] .cds-button--primary, [role="dialog"] button.primary');
+            }
+            
+            if (confirmBtn && !confirmBtn.disabled) {
+              console.log("Found confirmation button:", confirmBtn.textContent);
+              confirmBtn.click();
+              console.log("Assignment submitted with confirmation!");
+            } else {
+              console.log("No confirmation dialog found or button disabled. Initial submission may have completed.");
+            }
+          }, 3000); // Wait 3 seconds for the confirmation dialog to appear
         }
       } else {
         console.log("Submit button not found. Manual submission required.");

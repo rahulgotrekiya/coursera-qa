@@ -28,17 +28,33 @@ function extractQuestionsFromPage() {
   
   const questions = [];
   
-  // Method 1: Look for MUI FormControl containers (cds-213 class) - this is what worked in the logs!
+  // Method 1: Look for MUI FormControl containers (cds-213 class)
   let formControls = document.querySelectorAll('.cds-213, [role="radiogroup"], [role="group"]');
   console.log(`Found ${formControls.length} form control groups`);
   
-  // Filter to only include groups that have actual input options
+  // Filter to only include groups that look like ACTUAL quiz questions
+  // Quiz questions typically have 3-6 RADIO button options
+  // Filter out: honor code checkboxes, headers, navigation elements, etc.
   formControls = Array.from(formControls).filter(fc => {
-    const inputs = fc.querySelectorAll('input[type="radio"], input[type="checkbox"], [role="radio"], [role="checkbox"]');
-    return inputs.length >= 2; // At least 2 options = likely a question
+    const radioInputs = fc.querySelectorAll('input[type="radio"]');
+    const checkboxInputs = fc.querySelectorAll('input[type="checkbox"]');
+    
+    // A quiz question has 3-6 radio options (A, B, C, D, sometimes E, F)
+    const isQuizQuestion = radioInputs.length >= 3 && radioInputs.length <= 6;
+    
+    // Exclude honor code checkbox and other non-question elements
+    const text = fc.textContent.toLowerCase();
+    const isHonorCode = text.includes('understand that submitting') || 
+                        text.includes('academic integrity') ||
+                        text.includes("isn't my own") ||
+                        text.includes('permanent failure') ||
+                        text.includes('deactivation') ||
+                        (checkboxInputs.length === 1 && radioInputs.length === 0);
+    
+    return isQuizQuestion && !isHonorCode;
   });
   
-  console.log(`After filtering: ${formControls.length} valid question containers`);
+  console.log(`After filtering: ${formControls.length} actual quiz questions`);
   
   if (formControls.length > 0) {
     formControls.forEach((fc, index) => {
