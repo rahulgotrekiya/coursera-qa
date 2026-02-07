@@ -2,6 +2,8 @@
   "manifest_version": 3,
   "name": "Coursera Quiz Solver & Auto-Submit",
   "version": "3.0.0",
+  "author": "Rahul Gotrekiya",
+  "license": "MIT",
   "description": "One-click quiz solver: automatically answers questions, checks honor code, and submits assignments using Gemini AI",
   "permissions": [
     "activeTab",
