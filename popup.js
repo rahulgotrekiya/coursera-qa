@@ -288,7 +288,10 @@ async function autoSelectAnswers(tabId, aiResponse) {
 function selectAnswersOnPage(answers) {
   console.log("Attempting to select answers:", answers);
 
-  // Find all question containers - Coursera uses various selectors
+  // Find all potential question containers
+  let questionElements = [];
+  
+  // First try specific Coursera selectors
   const questionSelectors = [
     '.rc-FormPartsQuestion',
     '[data-test="quiz-question"]',
@@ -297,7 +300,6 @@ function selectAnswersOnPage(answers) {
     '.assessment-question',
   ];
 
-  let questionElements = [];
   for (const selector of questionSelectors) {
     const elements = document.querySelectorAll(selector);
     if (elements.length > 0) {
@@ -307,13 +309,33 @@ function selectAnswersOnPage(answers) {
     }
   }
 
+  // Fallback: Find form control groups but FILTER to only actual quiz questions
   if (questionElements.length === 0) {
-    // Fallback: try to find by looking for groups of radio/checkbox inputs
     const allInputGroups = document.querySelectorAll('[role="radiogroup"], [role="group"], .cds-213');
-    if (allInputGroups.length > 0) {
-      questionElements = Array.from(allInputGroups);
-      console.log(`Found ${questionElements.length} questions using fallback input groups`);
-    }
+    console.log(`Found ${allInputGroups.length} total input groups`);
+    
+    // Filter to only include groups that look like quiz questions
+    // Quiz questions typically have EXACTLY 4 radio button options
+    // The honor code checkbox is a single checkbox, so it will be filtered out
+    questionElements = Array.from(allInputGroups).filter(group => {
+      const radioInputs = group.querySelectorAll('input[type="radio"]');
+      const checkboxInputs = group.querySelectorAll('input[type="checkbox"]');
+      
+      // A quiz question typically has 3-5 radio options
+      // The honor code is a single checkbox with specific text
+      const isQuizQuestion = radioInputs.length >= 3 && radioInputs.length <= 6;
+      
+      // Also check it's not the honor code checkbox
+      const text = group.textContent.toLowerCase();
+      const isHonorCode = text.includes('understand that submitting') || 
+                          text.includes('academic integrity') ||
+                          text.includes("isn't my own") ||
+                          (checkboxInputs.length === 1 && radioInputs.length === 0);
+      
+      return isQuizQuestion && !isHonorCode;
+    });
+    
+    console.log(`After filtering: ${questionElements.length} actual quiz questions`);
   }
 
   if (questionElements.length === 0) {
@@ -321,8 +343,17 @@ function selectAnswersOnPage(answers) {
     return;
   }
 
+  // Make sure we have the right number of questions
+  if (questionElements.length !== answers.length) {
+    console.log(`Warning: Found ${questionElements.length} questions but have ${answers.length} answers`);
+    // Try to match by using the minimum
+  }
+
   answers.forEach((answer, index) => {
-    if (index >= questionElements.length) return;
+    if (index >= questionElements.length) {
+      console.log(`Skipping answer ${index + 1} - no matching question element`);
+      return;
+    }
 
     const questionEl = questionElements[index];
     console.log(`Processing question ${index + 1}, answer: ${answer}`);
@@ -330,20 +361,12 @@ function selectAnswersOnPage(answers) {
     // Map answer letter to index (A=0, B=1, C=2, D=3)
     const answerIndex = answer.charCodeAt(0) - 65; // 'A' = 65 in ASCII
 
-    // Find all clickable option elements within this question
-    // Try multiple approaches for Coursera's MUI components
+    // Find radio inputs specifically (quiz answers are radio buttons)
+    let inputs = questionEl.querySelectorAll('input[type="radio"]');
     
-    // Approach 1: Find all radio/checkbox inputs
-    let inputs = questionEl.querySelectorAll('input[type="radio"], input[type="checkbox"]');
-    
-    // Approach 2: If no inputs found, try MUI checkbox containers
+    // Fallback to checkbox if no radio (some quizzes use checkboxes)
     if (inputs.length === 0) {
-      inputs = questionEl.querySelectorAll('.cds-217, [class*="Checkbox"], [class*="Radio"]');
-    }
-
-    // Approach 3: Look for clickable label elements
-    if (inputs.length === 0) {
-      inputs = questionEl.querySelectorAll('[role="radio"], [role="checkbox"]');
+      inputs = questionEl.querySelectorAll('input[type="checkbox"]');
     }
 
     console.log(`Found ${inputs.length} options for question ${index + 1}`);
@@ -377,59 +400,116 @@ function selectAnswersOnPage(answers) {
     }
   });
 
-  // --- AUTO SUBMIT logic ---
-  console.log("Looking for submit button...");
+  // --- Check Honor Code checkbox first ---
+  console.log("Looking for honor code checkbox...");
   
-  // Wait a bit before submitting to ensure clicks are processed by React
   setTimeout(() => {
-    // Look for submit button with various selectors
-    let submitBtn = null;
+    // Find the honor code checkbox
+    const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
+    let honorCodeCheckbox = null;
     
-    // Heuristic 1: Find buttons with "submit" text (case-insensitive)
-    const allButtons = Array.from(document.querySelectorAll('button'));
-    submitBtn = allButtons.find(btn => {
-      const text = btn.textContent.toLowerCase().trim();
-      // Match "Submit Quiz", "Submit", but not "Save" or disabled buttons
-      return (text.includes('submit') && !text.includes('save') && !btn.disabled) || 
-             (text === 'submit quiz');
-    });
-
-    // Heuristic 2: Look for specific Coursera selectors
-    if (!submitBtn) {
-      const submitSelectors = [
-        '[data-test="submit-button"]',
-        '[data-test="quiz-submit-button"]',
-        'button[type="submit"]',
-        '.rc-SubmitButton button',
-        '[data-testid="submit-button"]',
-      ];
-      
-      for (const selector of submitSelectors) {
-        submitBtn = document.querySelector(selector);
-        if (submitBtn && !submitBtn.disabled) break;
+    for (const cb of allCheckboxes) {
+      // Check if this checkbox is in a container with honor code text
+      const parent = cb.closest('.cds-213, [role="group"], label, div');
+      if (parent) {
+        const text = parent.textContent.toLowerCase();
+        if (text.includes('understand that submitting') || 
+            text.includes("isn't my own") ||
+            text.includes('permanent failure') ||
+            text.includes('deactivation')) {
+          honorCodeCheckbox = cb;
+          break;
+        }
       }
     }
-
-    // Heuristic 3: Look for primary CDS buttons
-    if (!submitBtn) {
-      const primaryBtns = document.querySelectorAll('.cds-button--primary, button.primary');
-      submitBtn = Array.from(primaryBtns).find(btn => {
-        const text = btn.textContent.toLowerCase();
-        return text.includes('submit');
-      });
+    
+    // Also try finding by looking for checkbox near submit area
+    if (!honorCodeCheckbox) {
+      const allGroups = document.querySelectorAll('.cds-213, [role="group"]');
+      for (const group of allGroups) {
+        const text = group.textContent.toLowerCase();
+        if (text.includes('understand that submitting') || text.includes("isn't my own")) {
+          honorCodeCheckbox = group.querySelector('input[type="checkbox"]');
+          if (honorCodeCheckbox) break;
+        }
+      }
     }
-
-    if (submitBtn && !submitBtn.disabled) {
-      console.log("Submit button found:", submitBtn.textContent);
-      console.log("Clicking submit in 2 seconds...");
-      setTimeout(() => {
-        submitBtn.click();
-        console.log("Assignment submitted!");
-      }, 2000);
+    
+    if (honorCodeCheckbox && !honorCodeCheckbox.checked) {
+      console.log("Found honor code checkbox, clicking it...");
+      honorCodeCheckbox.click();
+      
+      // Also try clicking parent label
+      const label = honorCodeCheckbox.closest('label');
+      if (label) label.click();
+      
+      // Dispatch event for React
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      honorCodeCheckbox.dispatchEvent(event);
+    } else if (honorCodeCheckbox) {
+      console.log("Honor code checkbox already checked");
     } else {
-      console.log("Submit button not found or is disabled. Manual submission required.");
+      console.log("Honor code checkbox not found (may not be required for this quiz)");
     }
-  }, 1500);
+    
+    // --- AUTO SUBMIT logic (after honor code is checked) ---
+    console.log("Looking for submit button...");
+    
+    // Wait a bit more for the submit button to become enabled after checking honor code
+    setTimeout(() => {
+      // Look for submit button with various selectors
+      let submitBtn = null;
+      
+      // Heuristic 1: Find buttons with "submit" text (case-insensitive)
+      const allButtons = Array.from(document.querySelectorAll('button'));
+      submitBtn = allButtons.find(btn => {
+        const text = btn.textContent.toLowerCase().trim();
+        // Match "Submit Quiz", "Submit", but not "Save" or disabled buttons
+        return (text.includes('submit') && !text.includes('save')) || 
+               (text === 'submit quiz');
+      });
+
+      // Heuristic 2: Look for specific Coursera selectors
+      if (!submitBtn) {
+        const submitSelectors = [
+          '[data-test="submit-button"]',
+          '[data-test="quiz-submit-button"]',
+          'button[type="submit"]',
+          '.rc-SubmitButton button',
+          '[data-testid="submit-button"]',
+        ];
+        
+        for (const selector of submitSelectors) {
+          submitBtn = document.querySelector(selector);
+          if (submitBtn) break;
+        }
+      }
+
+      // Heuristic 3: Look for primary CDS buttons
+      if (!submitBtn) {
+        const primaryBtns = document.querySelectorAll('.cds-button--primary, button.primary');
+        submitBtn = Array.from(primaryBtns).find(btn => {
+          const text = btn.textContent.toLowerCase();
+          return text.includes('submit');
+        });
+      }
+
+      if (submitBtn) {
+        if (submitBtn.disabled) {
+          console.log("Submit button found but still disabled. Honor code may not have been checked properly.");
+        } else {
+          console.log("Submit button found and enabled:", submitBtn.textContent);
+          console.log("Clicking submit in 2 seconds...");
+          setTimeout(() => {
+            submitBtn.click();
+            console.log("Assignment submitted!");
+          }, 2000);
+        }
+      } else {
+        console.log("Submit button not found. Manual submission required.");
+      }
+    }, 1000); // Wait 1 second after honor code check before looking for submit button
+  }, 1500); // Wait 1.5 seconds after answer selection before checking honor code
 }
 
 // Get AI answers from Gemini
