@@ -190,17 +190,17 @@ solveBtn.addEventListener("click", async () => {
     // Copy to clipboard
     await navigator.clipboard.writeText(formattedAnswers);
 
-    // Auto-select answers on the page
+    // Auto-select and submit on the page
     solveBtnText.innerHTML =
-      '<span class="loading"></span>Selecting answers...';
+      '<span class="loading"></span>Selecting & Submitting...';
     await autoSelectAnswers(tab.id, aiResponse);
 
-    showStatus("✓ Answers selected and copied to clipboard!", "success");
+    showStatus("✓ Answers submitted and copied to clipboard!", "success");
   } catch (error) {
     console.error("Error:", error);
     showStatus(`Error: ${error.message}`, "error");
   } finally {
-    setButtonLoading(solveBtn, false, "Solve Questions");
+    setButtonLoading(solveBtn, false, "Solve & Submit Assignment");
   }
 });
 
@@ -284,22 +284,36 @@ async function autoSelectAnswers(tabId, aiResponse) {
   }
 }
 
-// Function injected into page to select answers
+// Function injected into page to select answers and automatically submit
 function selectAnswersOnPage(answers) {
   console.log("Attempting to select answers:", answers);
 
-  // Find all question containers
+  // Find all question containers - Coursera uses various selectors
   const questionSelectors = [
+    '.rc-FormPartsQuestion',
     '[data-test="quiz-question"]',
-    ".rc-FormPartsQuestion",
-    ".rc-QuizQuestion",
-    ".assessment-question",
+    '.rc-QuizQuestion',
+    '[class*="FormPart"][class*="Question"]',
+    '.assessment-question',
   ];
 
   let questionElements = [];
   for (const selector of questionSelectors) {
-    questionElements = document.querySelectorAll(selector);
-    if (questionElements.length > 0) break;
+    const elements = document.querySelectorAll(selector);
+    if (elements.length > 0) {
+      questionElements = Array.from(elements);
+      console.log(`Found ${elements.length} questions using selector: ${selector}`);
+      break;
+    }
+  }
+
+  if (questionElements.length === 0) {
+    // Fallback: try to find by looking for groups of radio/checkbox inputs
+    const allInputGroups = document.querySelectorAll('[role="radiogroup"], [role="group"], .cds-213');
+    if (allInputGroups.length > 0) {
+      questionElements = Array.from(allInputGroups);
+      console.log(`Found ${questionElements.length} questions using fallback input groups`);
+    }
   }
 
   if (questionElements.length === 0) {
@@ -311,29 +325,111 @@ function selectAnswersOnPage(answers) {
     if (index >= questionElements.length) return;
 
     const questionEl = questionElements[index];
-
-    // Find radio buttons or checkboxes
-    const inputs = questionEl.querySelectorAll(
-      'input[type="radio"], input[type="checkbox"]',
-    );
+    console.log(`Processing question ${index + 1}, answer: ${answer}`);
 
     // Map answer letter to index (A=0, B=1, C=2, D=3)
     const answerIndex = answer.charCodeAt(0) - 65; // 'A' = 65 in ASCII
 
-    if (inputs[answerIndex]) {
-      // Click the input
-      inputs[answerIndex].click();
-      console.log(`Selected answer ${answer} for question ${index + 1}`);
+    // Find all clickable option elements within this question
+    // Try multiple approaches for Coursera's MUI components
+    
+    // Approach 1: Find all radio/checkbox inputs
+    let inputs = questionEl.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+    
+    // Approach 2: If no inputs found, try MUI checkbox containers
+    if (inputs.length === 0) {
+      inputs = questionEl.querySelectorAll('.cds-217, [class*="Checkbox"], [class*="Radio"]');
+    }
 
-      // Also try clicking the label if it exists
-      const label = questionEl.querySelector(
-        `label[for="${inputs[answerIndex].id}"]`,
-      );
-      if (label) {
-        label.click();
+    // Approach 3: Look for clickable label elements
+    if (inputs.length === 0) {
+      inputs = questionEl.querySelectorAll('[role="radio"], [role="checkbox"]');
+    }
+
+    console.log(`Found ${inputs.length} options for question ${index + 1}`);
+
+    if (inputs[answerIndex]) {
+      const targetInput = inputs[answerIndex];
+      
+      // Try to click the input directly
+      targetInput.click();
+      console.log(`Clicked input for answer ${answer} on question ${index + 1}`);
+
+      // Also try clicking the parent label if it exists (for MUI components)
+      const parentLabel = targetInput.closest('label');
+      if (parentLabel) {
+        parentLabel.click();
+        console.log(`Also clicked parent label`);
       }
+
+      // For MUI, try finding and clicking the checkbox wrapper
+      const checkboxWrapper = targetInput.closest('.cds-217, [class*="CheckboxRoot"]');
+      if (checkboxWrapper) {
+        checkboxWrapper.click();
+        console.log(`Also clicked checkbox wrapper`);
+      }
+
+      // Try dispatching events for React components
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      targetInput.dispatchEvent(event);
+    } else {
+      console.log(`Could not find option ${answerIndex} for question ${index + 1}`);
     }
   });
+
+  // --- AUTO SUBMIT logic ---
+  console.log("Looking for submit button...");
+  
+  // Wait a bit before submitting to ensure clicks are processed by React
+  setTimeout(() => {
+    // Look for submit button with various selectors
+    let submitBtn = null;
+    
+    // Heuristic 1: Find buttons with "submit" text (case-insensitive)
+    const allButtons = Array.from(document.querySelectorAll('button'));
+    submitBtn = allButtons.find(btn => {
+      const text = btn.textContent.toLowerCase().trim();
+      // Match "Submit Quiz", "Submit", but not "Save" or disabled buttons
+      return (text.includes('submit') && !text.includes('save') && !btn.disabled) || 
+             (text === 'submit quiz');
+    });
+
+    // Heuristic 2: Look for specific Coursera selectors
+    if (!submitBtn) {
+      const submitSelectors = [
+        '[data-test="submit-button"]',
+        '[data-test="quiz-submit-button"]',
+        'button[type="submit"]',
+        '.rc-SubmitButton button',
+        '[data-testid="submit-button"]',
+      ];
+      
+      for (const selector of submitSelectors) {
+        submitBtn = document.querySelector(selector);
+        if (submitBtn && !submitBtn.disabled) break;
+      }
+    }
+
+    // Heuristic 3: Look for primary CDS buttons
+    if (!submitBtn) {
+      const primaryBtns = document.querySelectorAll('.cds-button--primary, button.primary');
+      submitBtn = Array.from(primaryBtns).find(btn => {
+        const text = btn.textContent.toLowerCase();
+        return text.includes('submit');
+      });
+    }
+
+    if (submitBtn && !submitBtn.disabled) {
+      console.log("Submit button found:", submitBtn.textContent);
+      console.log("Clicking submit in 2 seconds...");
+      setTimeout(() => {
+        submitBtn.click();
+        console.log("Assignment submitted!");
+      }, 2000);
+    } else {
+      console.log("Submit button not found or is disabled. Manual submission required.");
+    }
+  }, 1500);
 }
 
 // Get AI answers from Gemini
