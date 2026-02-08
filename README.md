@@ -46,7 +46,7 @@
 1. **Download this repository**
 
    ```bash
-   git clone https://github.com/yourusername/coursera-quiz-solver.git
+   git clone https://github.com/rahulgotrekiya/coursera-qa.git
    ```
 
    Or click "Code" → "Download ZIP" and extract
@@ -167,7 +167,7 @@ And many other variations including:
 ## 📁 Project Structure
 
 ```
-coursera-quiz-solver/
+coursera-qa/
 ├── manifest.json          # Extension configuration (v3.0)
 ├── popup.html            # Minimal black/white UI
 ├── popup.js              # Main logic with auto-submit & Gemini API
@@ -302,8 +302,8 @@ MIT License - see LICENSE file for details
 
 ## 📧 Contact
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/coursera-quiz-solver/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/coursera-quiz-solver/discussions)
+- **Issues**: [GitHub Issues](https://github.com/rahulgotrekiya/coursera-qa/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/rahulgotrekiya/coursera-qa/discussions)
 
 ---
 
