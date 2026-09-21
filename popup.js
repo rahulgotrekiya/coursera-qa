@@ -72,23 +72,112 @@ saveApiBtn.addEventListener("click", async () => {
     return;
   }
 
-  // Validate API key format (basic check)
-  if (!apiKey.startsWith("AIzaSy")) {
+  // Basic validation - just check minimum length, let the API itself reject invalid keys
+  if (apiKey.length < 10) {
     showStatus(
-      'Invalid API key format. Gemini API keys start with "AIzaSy"',
+      "API key seems too short. Please paste your full key from Google AI Studio.",
       "error",
     );
     return;
   }
 
   try {
-    // Save to storage
+    // Validate the key by making a test request to the Gemini API
+    showStatus("Validating API key...", "info");
+    saveApiBtn.disabled = true;
+
+    const testBody = JSON.stringify({
+      contents: [{ parts: [{ text: "Hi" }] }],
+      generationConfig: { maxOutputTokens: 5 },
+    });
+
+    let validated = false;
+    let lastError = "";
+
+    // Try method 1: x-goog-api-key header with v1beta
+    try {
+      const res = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: testBody,
+        },
+      );
+      if (res.ok) {
+        validated = true;
+      } else {
+        const err = await res.json();
+        lastError = err.error?.message || res.statusText;
+      }
+    } catch (e) {
+      lastError = e.message;
+    }
+
+    // Try method 2: query parameter with v1beta (fallback)
+    if (!validated) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: testBody,
+          },
+        );
+        if (res.ok) {
+          validated = true;
+        } else {
+          const err = await res.json();
+          lastError = err.error?.message || res.statusText;
+        }
+      } catch (e) {
+        lastError = e.message;
+      }
+    }
+
+    // Try method 3: query parameter with v1 (legacy fallback)
+    if (!validated) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: testBody,
+          },
+        );
+        if (res.ok) {
+          validated = true;
+        } else {
+          const err = await res.json();
+          lastError = err.error?.message || res.statusText;
+        }
+      } catch (e) {
+        lastError = e.message;
+      }
+    }
+
+    saveApiBtn.disabled = false;
+
+    if (!validated) {
+      showStatus(
+        `API key rejected by Google: ${lastError}. Please check your key and ensure the Generative Language API is enabled in your Google Cloud project.`,
+        "error",
+      );
+      return;
+    }
+
+    // Key is valid — save to storage
     await chrome.storage.local.set({ geminiApiKey: apiKey });
     currentApiKey = apiKey;
 
     // Update UI
     updateApiStatus(true);
-    showStatus("API key saved successfully!", "success");
+    showStatus("API key validated and saved successfully!", "success");
 
     // Clear input and hide section
     apiKeyInput.value = "";
@@ -99,6 +188,7 @@ saveApiBtn.addEventListener("click", async () => {
       hideStatus();
     }, 2000);
   } catch (error) {
+    saveApiBtn.disabled = false;
     console.error("Error saving API key:", error);
     showStatus("Failed to save API key. Please try again.", "error");
   }
@@ -551,11 +641,11 @@ function selectAnswersOnPage(answers) {
 // Get AI answers from Gemini
 async function getAIAnswers(questions, questionCount) {
   const modelNames = [
-    "gemini-2.5-flash",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash-lite",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.6-flash",
   ];
 
   const prompt = `You are a quiz answering assistant. There are exactly ${questionCount} questions below. You MUST answer ALL ${questionCount} questions.
@@ -593,11 +683,14 @@ ${questions}`;
 
   for (const modelName of modelNames) {
     try {
-      const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${currentApiKey}`;
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
       const response = await fetch(apiUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": currentApiKey,
+        },
         body: JSON.stringify(requestBody),
       });
 
