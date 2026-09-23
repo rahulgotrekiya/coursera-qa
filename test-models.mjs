@@ -225,3 +225,48 @@ assert.strictEqual(
 );
 
 console.log("ok: popup/worker split");
+
+// --- surfaces ---
+// The side panel and the shortcut are both declared in the manifest and both
+// silently do nothing if a piece is missing, so assert each one.
+assert.strictEqual(
+  manifest.side_panel?.default_path,
+  "popup.html",
+  "manifest must declare the side panel",
+);
+assert.ok(
+  manifest.permissions.includes("sidePanel"),
+  "the sidePanel permission is required for setPanelBehavior",
+);
+assert.ok(
+  !manifest.action?.default_popup,
+  "default_popup would win over the side panel on action click",
+);
+assert.ok(manifest.commands?.solve, "manifest must declare the solve command");
+assert.ok(
+  bg.includes("chrome.commands.onCommand"),
+  "the worker must listen for the shortcut",
+);
+assert.ok(
+  bg.includes("setPanelBehavior"),
+  "clicking the toolbar icon must open the panel",
+);
+
+// Both entry points must funnel through one guard, or the shortcut can start a
+// second run on top of a running one.
+assert.strictEqual(
+  (bg.match(/startSolve\(\)/g) || []).length,
+  3, // definition, command listener, message handler
+  "solve must have exactly one entry point, called from both surfaces",
+);
+
+// A panel is user-resizable; a fixed width would clip or leave dead space.
+const bodyBlock = code.slice(code.indexOf("body {"), code.indexOf("}", code.indexOf("body {")));
+// Anchored to the property start: "min-width: 280px" is a floor, not a fixed
+// width, and an unanchored /width:\s*\d+px/ would flag it.
+assert.ok(
+  !/(^|[;{\s])width:\s*\d+px/m.test(bodyBlock),
+  "the surface must be fluid, not a fixed pixel width",
+);
+
+console.log("ok: side panel + shortcut");

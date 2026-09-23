@@ -70,14 +70,32 @@ async function runSolve(tabId) {
   }
 }
 
+chrome.sidePanel
+  ?.setPanelBehavior({ openPanelOnActionClick: true })
+  .catch((e) => console.warn("side panel unavailable:", e.message));
+
+// Both entry points - the panel button and the keyboard shortcut - come
+// through here, so the tab lookup, the page check and the already-running
+// guard live in one place rather than once per caller.
+async function startSolve() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.url?.includes("coursera.org")) {
+    return setRun({ word: "Wrong page", detail: "Open a Coursera quiz first.", error: true });
+  }
+  const run = await getRun();
+  if (run.busy) return;
+  return runSolve(tab.id);
+}
+
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "solve") startSolve();
+});
+
 let currentApiKey = null;
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "solve") {
-    // Ignore a second press while one is already running.
-    getRun().then((run) => {
-      if (!run.busy) runSolve(msg.tabId);
-    });
+    startSolve();
     return false;
   }
   if (msg.type === "extract") {

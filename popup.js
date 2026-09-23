@@ -226,15 +226,10 @@ copyBtn.addEventListener("click", async () => {
 });
 
 // Solve questions with AI
-solveBtn.addEventListener("click", async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab.url.includes("coursera.org")) {
-    render({ word: "Wrong page", detail: "Open a Coursera quiz first.", error: true });
-    return;
-  }
-  // Fire and forget: the worker owns the run from here, so closing this popup
-  // no longer stops it.
-  chrome.runtime.sendMessage({ type: "solve", tabId: tab.id });
+solveBtn.addEventListener("click", () => {
+  // Fire and forget: the worker owns the run, so closing this panel - or never
+  // opening it, when the shortcut starts the run - changes nothing.
+  chrome.runtime.sendMessage({ type: "solve" });
 });
 
 // ------------------------------------------------------------------ render
