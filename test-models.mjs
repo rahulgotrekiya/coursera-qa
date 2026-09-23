@@ -167,3 +167,41 @@ assert.ok(!/honorCodeBox/.test(js), "the extension must not tick the honor-code 
 assert.ok(!/submitBtn|submitQuiz|submitOnPage/.test(js), "the extension must not submit");
 
 console.log("ok: disabled detection");
+
+// --- dot loader frames ---
+// Every index must address a real cell in the 7x7 grid. An out-of-range index
+// is silently ignored at runtime: the dot just never lights, and the animation
+// looks subtly wrong rather than failing.
+const frames = JSON.parse(
+  js.slice(js.indexOf("const DOT_FRAMES = ["), js.indexOf("];", js.indexOf("const DOT_FRAMES")) + 2)
+    .replace("const DOT_FRAMES = ", "")
+    .replace(/,(\s*\])/g, "$1")
+    .replace(/;\s*$/, ""),
+);
+
+assert.ok(frames.length > 1, "need more than one frame to animate");
+for (const [i, frame] of frames.entries()) {
+  assert.ok(Array.isArray(frame) && frame.length, `frame ${i} is empty`);
+  for (const cell of frame) {
+    assert.ok(
+      Number.isInteger(cell) && cell >= 0 && cell <= 48,
+      `frame ${i} has cell ${cell}, outside the 7x7 grid`,
+    );
+  }
+}
+
+// The grid must be built with exactly as many cells as the frames address.
+assert.ok(js.includes('"<i></i>".repeat(49)'), "grid must render 49 cells");
+
+// The interval is the one resource here that can leak; setDots must clear
+// before it starts, so a second call cannot leave an orphan timer.
+const setDotsBody = js.slice(js.indexOf("function setDots(on)"), js.indexOf("function setState"));
+const clearAt = setDotsBody.indexOf("clearInterval");
+const startAt = setDotsBody.indexOf("setInterval(");
+// Both must be present: indexOf returns -1 when missing, and -1 < anything,
+// so comparing positions alone would pass with no clearInterval at all.
+assert.ok(clearAt !== -1, "setDots must clear any running timer");
+assert.ok(startAt !== -1, "setDots must start a timer");
+assert.ok(clearAt < startAt, "the clear must come before the start");
+
+console.log(`ok: dot loader (${frames.length} frames)`);

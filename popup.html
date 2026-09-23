@@ -62,47 +62,23 @@
         font-weight: 400;
       }
 
-      /* Waveform pill: the system's busy indicator. Bars are pure CSS, so
-         there is no timer to start, stop, or leak. */
-      .wave {
-        display: flex;
-        align-items: center;
-        gap: 3px;
-        height: 28px;
-        padding: 0 12px;
-        border: 2px solid var(--ink);
-        border-radius: 9999px;
+      /* Dot loader: 7x7 grid, frames stepped from popup.js. 4px cells keep
+         the whole block at 34px so it sits on the wordmark baseline. */
+      .dots {
+        display: grid;
+        grid-template-columns: repeat(7, 4px);
+        gap: 1px;
       }
 
-      .wave > i {
-        width: 3px;
-        height: 6px;
-        background: var(--ink);
+      .dots > i {
+        width: 4px;
+        height: 4px;
         border-radius: 1px;
-        animation: pulse 0.9s ease-in-out infinite;
+        background: rgba(26, 26, 26, 0.15);
       }
 
-      .wave > i:nth-child(2) {
-        animation-delay: 0.12s;
-      }
-      .wave > i:nth-child(3) {
-        animation-delay: 0.24s;
-      }
-      .wave > i:nth-child(4) {
-        animation-delay: 0.36s;
-      }
-      .wave > i:nth-child(5) {
-        animation-delay: 0.48s;
-      }
-
-      @keyframes pulse {
-        0%,
-        100% {
-          height: 6px;
-        }
-        50% {
-          height: 16px;
-        }
+      .dots > i.active {
+        background: var(--ink);
       }
 
       /* ---------- state ---------- */
@@ -321,9 +297,7 @@
   <body>
     <div class="masthead">
       <span class="wordmark">Solver</span>
-      <div class="wave" id="wave" hidden>
-        <i></i><i></i><i></i><i></i><i></i>
-      </div>
+      <div class="dots" id="dots" hidden></div>
     </div>
 
     <div class="content">

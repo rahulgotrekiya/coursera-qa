@@ -11,12 +11,53 @@ const copyBtn = document.getElementById("copyBtn");
 const statusDiv = document.getElementById("status");
 const stateTitle = document.getElementById("stateTitle");
 const answersEl = document.getElementById("answers");
-const waveEl = document.getElementById("wave");
+const dotsEl = document.getElementById("dots");
+
+// 7x7 dot loader. Each frame lists the cell indices lit on that tick; the
+// sequence traces a loop around the grid.
+const DOT_FRAMES = [
+  [14, 7, 0, 8, 6, 13, 20],
+  [14, 7, 13, 20, 16, 27, 21],
+  [14, 20, 27, 21, 34, 24, 28],
+  [27, 21, 34, 28, 41, 32, 35],
+  [34, 28, 41, 35, 48, 40, 42],
+  [34, 28, 41, 35, 48, 42, 46],
+  [34, 28, 41, 35, 48, 42, 38],
+  [34, 28, 41, 35, 48, 30, 21],
+  [34, 28, 41, 48, 21, 22, 14],
+  [34, 28, 41, 21, 14, 16, 27],
+  [34, 28, 21, 14, 10, 20, 27],
+  [28, 21, 14, 4, 13, 20, 27],
+  [28, 21, 14, 12, 6, 13, 20],
+  [28, 21, 14, 6, 13, 20, 11],
+  [28, 21, 14, 6, 13, 20, 10],
+  [14, 6, 13, 20, 9, 7, 21],
+];
+
+let dotTimer = null;
+
+// One entry point, so the timer cannot be started twice or left running.
+function setDots(on) {
+  clearInterval(dotTimer);
+  dotTimer = null;
+  dotsEl.hidden = !on;
+  if (!on) return;
+
+  if (!dotsEl.children.length) dotsEl.innerHTML = "<i></i>".repeat(49);
+  const cells = [...dotsEl.children];
+  let f = 0;
+  const tick = () => {
+    const frame = DOT_FRAMES[f++ % DOT_FRAMES.length];
+    cells.forEach((c, i) => c.classList.toggle("active", frame.includes(i)));
+  };
+  tick();
+  dotTimer = setInterval(tick, 100);
+}
 // The headline is the whole progress display: one word, rewritten in place.
 // busy also drives the waveform, so a state cannot animate without saying why.
 function setState(word, busy = false) {
   stateTitle.textContent = word;
-  waveEl.hidden = !busy;
+  setDots(busy);
 }
 
 // Which answer went to which question. Renders nothing when empty.
@@ -177,7 +218,7 @@ copyBtn.addEventListener("click", async () => {
     setState("Failed");
     showStatus(error.message, "error");
   } finally {
-    waveEl.hidden = true;
+    setDots(false);
     copyBtn.disabled = false;
     solveBtn.disabled = false;
   }
@@ -255,7 +296,7 @@ solveBtn.addEventListener("click", async () => {
     setState("Failed");
     showStatus(error.message, "error");
   } finally {
-    waveEl.hidden = true;
+    setDots(false);
     copyBtn.disabled = false;
     solveBtn.disabled = false;
   }
