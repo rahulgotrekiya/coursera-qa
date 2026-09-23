@@ -11,6 +11,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.error("Error extracting questions:", error);
       sendResponse({
         questions: [],
+        optionIds: [],
         cleanedText: "",
         count: 0,
         error: error.message,
@@ -27,6 +28,8 @@ function extractQuestionsFromPage() {
   // Each question typically has multiple radio/checkbox inputs grouped together
   
   const questions = [];
+  // questionOptionIds[i][j] = element id of option j of question i
+  const questionOptionIds = [];
   
   // Method 1: Look for MUI FormControl containers (cds-213 class)
   let formControls = document.querySelectorAll('.cds-213, [role="radiogroup"], [role="group"]');
@@ -100,6 +103,7 @@ function extractQuestionsFromPage() {
       
       // Now extract the options
       const options = [];
+      const optionIds = [];
       const optionElements = fc.querySelectorAll('input[type="radio"], input[type="checkbox"], [role="radio"], [role="checkbox"]');
       
       optionElements.forEach((opt, optIndex) => {
@@ -136,6 +140,9 @@ function extractQuestionsFromPage() {
         const letter = String.fromCharCode(65 + optIndex); // A, B, C, D...
         if (optionText) {
           options.push(`${letter}) ${optionText}`);
+          // Remember which input this letter maps to, so selection does not
+          // have to re-derive question order from the DOM later.
+          optionIds.push(opt.id || "");
         }
       });
       
@@ -150,6 +157,7 @@ function extractQuestionsFromPage() {
       
       if (fullQuestion.length > 10) {
         questions.push(fullQuestion);
+        questionOptionIds.push(optionIds);
       }
     });
   }
@@ -194,6 +202,7 @@ function extractQuestionsFromPage() {
 
   return {
     questions: questions,
+    optionIds: questionOptionIds,
     cleanedText: combinedText,
     count: questions.length,
   };

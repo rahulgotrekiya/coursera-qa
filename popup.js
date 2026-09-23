@@ -8,12 +8,163 @@ const changeApiBtn = document.getElementById("changeApiBtn");
 const saveApiBtn = document.getElementById("saveApiBtn");
 const apiKeyInput = document.getElementById("apiKey");
 const solveBtn = document.getElementById("solveBtn");
-const solveBtnText = document.getElementById("solveBtnText");
 const copyBtn = document.getElementById("copyBtn");
 const statusDiv = document.getElementById("status");
 const statsDiv = document.getElementById("stats");
 const answerBox = document.getElementById("answerBox");
 const answerText = document.getElementById("answerText");
+const pipelineEl = document.getElementById("pipeline");
+const countdownEl = document.getElementById("countdown");
+const cdText = document.getElementById("cdText");
+const cdBar = document.getElementById("cdBar");
+const cancelBtn = document.getElementById("cancelBtn");
+const dotsEl = document.getElementById("dots");
+
+// ---------------------------------------------------------------- pipeline UI
+// The solve flow is four stages that can each take seconds. Showing which one
+// is running is the difference between "slow" and "broken".
+
+const ICONS = {
+  pending: `<circle cx="12" cy="12" r="9"/>`,
+  "in-progress": `<circle class="spin" cx="12" cy="12" r="9" stroke-dasharray="4 4"/>`,
+  completed: `<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-4.5"/>`,
+  "need-help": `<circle cx="12" cy="12" r="9"/><path d="M12 8v4.5"/><path d="M12 16h.01"/>`,
+  failed: `<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>`,
+};
+
+const icon = (status) =>
+  `<span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICONS[status] || ICONS.pending}</svg></span>`;
+
+const STAGES = [
+  ["extract", "Extract questions"],
+  ["ai", "Ask Gemini"],
+  ["select", "Select answers"],
+  ["submit", "Submit"],
+];
+
+function resetPipeline() {
+  pipelineEl.innerHTML = `<li class="eyebrow">run</li>` + STAGES.map(
+    ([id, title]) => `<li class="stage" data-stage="${id}" data-status="pending">
+      <div class="stage-row">${icon("pending")}<span class="stage-title">${title}</span><span class="badge">pending</span></div>
+      <ul class="subtasks"></ul>
+    </li>`,
+  ).join("");
+  pipelineEl.classList.add("visible");
+  countdownEl.classList.remove("visible");
+}
+
+function hidePipeline() {
+  pipelineEl.classList.remove("visible");
+  pipelineEl.innerHTML = "";
+}
+
+// badge defaults to the status name; pass a detail to show something better
+// ("3 found", "gemini-2.0-flash") since that is what you actually want to read.
+function setStage(id, status, detail) {
+  const el = pipelineEl.querySelector(`[data-stage="${id}"]`);
+  if (!el) return;
+  el.dataset.status = status;
+  el.querySelector(".ico").outerHTML = icon(status);
+  const badge = el.querySelector(".badge");
+  const label = detail || status;
+  // Re-create the node so the pop animation restarts on every change.
+  if (badge.textContent !== label) {
+    const fresh = badge.cloneNode(false);
+    fresh.textContent = label;
+    badge.replaceWith(fresh);
+  }
+}
+
+// Per-question answers, shown under "Select answers" on the dashed connector.
+function setSubtasks(id, items) {
+  const el = pipelineEl.querySelector(`[data-stage="${id}"] .subtasks`);
+  if (!el) return;
+  el.innerHTML = items
+    .map(
+      (it) =>
+        `<li class="subtask ${it.status === "failed" ? "miss" : ""}">${icon(it.status)}<span class="q">Q${it.n}</span><span class="a">${it.text}</span></li>`,
+    )
+    .join("");
+  el.classList.toggle("open", items.length > 0);
+}
+
+// -------------------------------------------------------------- dot-loader
+// 7x7 grid. Only runs during the Gemini call, which is the one stage slow
+// enough to need reassurance that something is still happening.
+const DOT_FRAMES = [
+  [24], [17, 23, 25, 31], [10, 16, 18, 30, 32, 38],
+  [3, 9, 11, 29, 33, 39, 45], [2, 8, 12, 28, 34, 40, 46],
+  [1, 7, 13, 21, 27, 35, 41, 47], [0, 6, 14, 20, 42, 48],
+  [1, 7, 13, 21, 27, 35, 41, 47], [2, 8, 12, 28, 34, 40, 46],
+  [3, 9, 11, 29, 33, 39, 45], [10, 16, 18, 30, 32, 38],
+  [17, 23, 25, 31],
+];
+
+let dotTimer = null;
+
+function startDots() {
+  if (!dotsEl.children.length) {
+    dotsEl.innerHTML = "<i></i>".repeat(49);
+  }
+  dotsEl.classList.remove("hidden");
+  const cells = [...dotsEl.children];
+  let f = 0;
+  stopDots();
+  dotTimer = setInterval(() => {
+    const frame = DOT_FRAMES[f % DOT_FRAMES.length];
+    cells.forEach((c, i) => c.classList.toggle("active", frame.includes(i)));
+    f++;
+  }, 110);
+}
+
+function stopDots() {
+  if (dotTimer) clearInterval(dotTimer);
+  dotTimer = null;
+  dotsEl.classList.add("hidden");
+  [...dotsEl.children].forEach((c) => c.classList.remove("active"));
+}
+
+// --------------------------------------------------------------- countdown
+// Pure so it can be asserted without a DOM. Returns what the bar should show.
+function countdownFrame(remainingMs, totalMs) {
+  const clamped = Math.max(0, Math.min(remainingMs, totalMs));
+  return {
+    seconds: Math.ceil(clamped / 1000),
+    percent: totalMs > 0 ? (clamped / totalMs) * 100 : 0,
+  };
+}
+
+// Resolves true to go ahead, false if the user hit Cancel. Submitting a graded
+// attempt is irreversible, so this is the last exit.
+function runCountdown(seconds = 5) {
+  return new Promise((resolve) => {
+    const total = seconds * 1000;
+    const startedAt = Date.now();
+    countdownEl.classList.add("visible");
+
+    const paint = () => {
+      const { seconds: s, percent } = countdownFrame(
+        total - (Date.now() - startedAt),
+        total,
+      );
+      cdText.textContent = `Submitting in ${s}s…`;
+      cdBar.style.width = `${percent}%`;
+      return percent <= 0;
+    };
+    paint();
+
+    const finish = (ok) => {
+      clearInterval(timer);
+      cancelBtn.onclick = null;
+      countdownEl.classList.remove("visible");
+      resolve(ok);
+    };
+    const timer = setInterval(() => {
+      if (paint()) finish(true);
+    }, 50);
+    cancelBtn.onclick = () => finish(false);
+  });
+}
 
 let currentApiKey = null;
 
@@ -82,90 +233,19 @@ saveApiBtn.addEventListener("click", async () => {
   }
 
   try {
-    // Validate the key by making a test request to the Gemini API
+    // Listing models both validates the key and tells us which models
+    // actually exist, so hardcoded names cannot rot.
     showStatus("Validating API key...", "info");
     saveApiBtn.disabled = true;
 
-    const testBody = JSON.stringify({
-      contents: [{ parts: [{ text: "Hi" }] }],
-      generationConfig: { maxOutputTokens: 5 },
-    });
-
-    let validated = false;
-    let lastError = "";
-
-    // Try method 1: x-goog-api-key header with v1beta
-    try {
-      const res = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
-          body: testBody,
-        },
-      );
-      if (res.ok) {
-        validated = true;
-      } else {
-        const err = await res.json();
-        lastError = err.error?.message || res.statusText;
-      }
-    } catch (e) {
-      lastError = e.message;
-    }
-
-    // Try method 2: query parameter with v1beta (fallback)
-    if (!validated) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: testBody,
-          },
-        );
-        if (res.ok) {
-          validated = true;
-        } else {
-          const err = await res.json();
-          lastError = err.error?.message || res.statusText;
-        }
-      } catch (e) {
-        lastError = e.message;
-      }
-    }
-
-    // Try method 3: query parameter with v1 (legacy fallback)
-    if (!validated) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: testBody,
-          },
-        );
-        if (res.ok) {
-          validated = true;
-        } else {
-          const err = await res.json();
-          lastError = err.error?.message || res.statusText;
-        }
-      } catch (e) {
-        lastError = e.message;
-      }
-    }
-
+    // A new key must be checked against Google, not against a cached list.
+    await chrome.storage.local.remove(["models", "modelsAt"]);
+    const models = await fetchModels(apiKey);
     saveApiBtn.disabled = false;
 
-    if (!validated) {
+    if (!models.length) {
       showStatus(
-        `API key rejected by Google: ${lastError}. Please check your key and ensure the Generative Language API is enabled in your Google Cloud project.`,
+        `API key rejected by Google: ${lastModelError}. Check your key and that the Generative Language API is enabled.`,
         "error",
       );
       return;
@@ -199,6 +279,7 @@ copyBtn.addEventListener("click", async () => {
   setButtonLoading(copyBtn, true, "Copying...");
   hideStatus();
   hideAnswerBox();
+  hidePipeline();
 
   try {
     const [tab] = await chrome.tabs.query({
@@ -241,9 +322,10 @@ solveBtn.addEventListener("click", async () => {
     return;
   }
 
-  setButtonLoading(solveBtn, true, "Analyzing...");
+  setButtonLoading(solveBtn, true, "Solving...");
   hideStatus();
   hideAnswerBox();
+  resetPipeline();
 
   try {
     const [tab] = await chrome.tabs.query({
@@ -255,42 +337,92 @@ solveBtn.addEventListener("click", async () => {
       throw new Error("This extension only works on Coursera pages");
     }
 
-    solveBtnText.innerHTML =
-      '<span class="loading"></span>Extracting questions...';
+    // --- 1. extract ---
+    setStage("extract", "in-progress");
     const response = await extractQuestions(tab.id);
 
     if (!response || !response.questions || response.questions.length === 0) {
+      setStage("extract", "need-help", "none found");
       showStatus("No questions found on this page", "info");
       return;
     }
+    const n = response.questions.length;
+    setStage("extract", "completed", `${n} found`);
 
-    statsDiv.textContent = `Found ${response.questions.length} question${response.questions.length !== 1 ? "s" : ""}`;
+    // --- 2. ask gemini ---
+    setStage("ai", "in-progress");
+    startDots();
+    let aiResponse;
+    try {
+      aiResponse = await getAIAnswers(response.cleanedText, n);
+    } finally {
+      stopDots();
+    }
+    setStage("ai", "completed", lastModelUsed || "answered");
 
-    solveBtnText.innerHTML =
-      '<span class="loading"></span>Getting AI answers...';
-    const aiResponse = await getAIAnswers(response.cleanedText, response.questions.length);
-
-    // Format the answers nicely
     const formattedAnswers = formatAnswers(response.questions, aiResponse);
-
-    // Display answers
     answerText.textContent = formattedAnswers;
     answerBox.classList.add("visible");
-
-    // Copy to clipboard
     await navigator.clipboard.writeText(formattedAnswers);
 
-    // Auto-select and submit on the page
-    solveBtnText.innerHTML =
-      '<span class="loading"></span>Selecting & Submitting...';
-    await autoSelectAnswers(tab.id, aiResponse);
+    // --- 3. select (reversible on the page) ---
+    setStage("select", "in-progress");
+    const report = await autoSelectAnswers(tab.id, aiResponse, response.optionIds);
 
-    showStatus("✓ Answers submitted and copied to clipboard!", "success");
+    setSubtasks(
+      "select",
+      (report.answers || []).map((letter, i) => ({
+        n: i + 1,
+        text: letter,
+        status: report.ok?.[i] ? "completed" : "failed",
+      })),
+    );
+
+    if (!report.ready) {
+      setStage("select", "failed", `${report.selected || 0}/${n}`);
+      setStage("submit", "failed", "skipped");
+      showStatus(
+        `Answers copied, but nothing was submitted: ${report.reason || "unknown reason"}. Submit manually.`,
+        "error",
+      );
+      return;
+    }
+    setStage("select", "completed", `${report.selected}/${n}`);
+
+    // --- 4. submit, after a cancellable pause ---
+    setStage("submit", "in-progress", "5s");
+    const go = await runCountdown(5);
+
+    if (!go) {
+      setStage("submit", "need-help", "cancelled");
+      showStatus(
+        "Cancelled. Answers are selected on the page - submit yourself when ready.",
+        "info",
+      );
+      return;
+    }
+
+    const submitReport = await submitQuiz(tab.id);
+    if (submitReport?.submitted) {
+      setStage("submit", "completed", "done");
+      showStatus("✓ Submitted, and answers copied to clipboard.", "success");
+    } else {
+      setStage("submit", "failed", "blocked");
+      showStatus(
+        `Answers are selected but submit failed: ${submitReport?.reason || "unknown reason"}. Submit manually.`,
+        "error",
+      );
+    }
   } catch (error) {
     console.error("Error:", error);
-    showStatus(`Error: ${error.message}`, "error");
+    stopDots();
+    // Mark whichever stage was mid-flight, so the failure has a location.
+    const running = pipelineEl.querySelector('[data-status="in-progress"]');
+    if (running) setStage(running.dataset.stage, "failed", "error");
+    showStatus(error.message, "error");
   } finally {
-    setButtonLoading(solveBtn, false, "Solve & Submit Assignment");
+    stopDots();
+    setButtonLoading(solveBtn, false, "Solve & Submit");
   }
 });
 
@@ -320,7 +452,7 @@ function formatAnswers(questions, aiResponse) {
   
   lines.forEach((line, index) => {
     // Match pattern: "Question X: LETTER) Answer text" or "Question X: LETTER - Answer text"
-    const match = line.match(/Question\s*(\d+):\s*([A-D])\)?\s*[-)]?\s*(.+)/i);
+    const match = line.match(/Question\s*(\d+):\s*([A-F])\)?\s*[-)]?\s*(.+)/i);
     
     if (match) {
       const questionNum = match[1];
@@ -335,7 +467,7 @@ function formatAnswers(questions, aiResponse) {
         const qLines = questions[qIndex].split('\n').map(l => l.trim()).filter(l => l.length > 0);
         for (const qLine of qLines) {
           // Skip lines that look like options or "Question X"
-          if (!qLine.match(/^[A-D]\)/) && !qLine.match(/^Question\s+\d+$/i) && qLine.length > 10) {
+          if (!qLine.match(/^[A-F]\)/) && !qLine.match(/^Question\s+\d+$/i) && qLine.length > 10) {
             questionText = qLine.substring(0, 80); // Truncate for display
             if (qLine.length > 80) questionText += "...";
             break;
@@ -352,301 +484,294 @@ function formatAnswers(questions, aiResponse) {
 }
 
 // Auto-select answers on the page
-async function autoSelectAnswers(tabId, aiResponse) {
-  try {
-    // Parse answer letters from AI response
-    const answerMatches = aiResponse.match(/Question \d+:\s*([A-D])/gi);
+async function autoSelectAnswers(tabId, aiResponse, optionIds) {
+  // A-F: extraction supports up to 6 options, so parsing must too. Take the
+  // capture group directly - re-matching the whole line would find the "e" in
+  // "Question" before it ever reached the answer letter.
+  const answers = [...aiResponse.matchAll(/Question\s*\d+:\s*([A-F])/gi)].map(
+    (m) => m[1].toUpperCase(),
+  );
 
-    if (!answerMatches) {
-      console.log("Could not parse answers for auto-selection");
-      return;
-    }
-
-    const answers = answerMatches.map((match) => match.match(/([A-D])/i)[1]);
-
-    await chrome.scripting.executeScript({
-      target: { tabId: tabId },
-      func: selectAnswersOnPage,
-      args: [answers],
-    });
-  } catch (error) {
-    console.error("Error auto-selecting answers:", error);
+  if (!answers.length) {
+    return { ready: false, answers: [], reason: "could not parse any answers from the AI response" };
   }
+
+  const [{ result }] = await chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    func: selectAnswersOnPage,
+    args: [answers, optionIds || []],
+  });
+  return { ...result, answers };
 }
 
-// Function injected into page to select answers and automatically submit
-function selectAnswersOnPage(answers) {
-  console.log("Attempting to select answers:", answers);
+// Function injected into page to select answers and automatically submit.
+// Returns a report so the popup can tell the truth about what happened.
+async function selectAnswersOnPage(answers, optionIds) {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // Find all potential question containers
+  // Coursera renders asynchronously and enables Submit only after the honor
+  // code registers in React state. Fixed timeouts lose that race on a slow
+  // page, so wait for the condition itself.
+  async function waitFor(check, timeoutMs = 15000) {
+    const deadline = Date.now() + timeoutMs;
+    do {
+      const hit = check();
+      if (hit) return hit;
+      await sleep(250);
+    } while (Date.now() < deadline);
+    return null;
+  }
+
+  // Click exactly once. Clicking the input AND its label AND dispatching a
+  // synthetic event toggles a checkbox an even number of times and silently
+  // leaves it OFF - which is why submit sometimes stayed disabled.
+  function setChecked(input) {
+    if (input.checked) return true;
+    const label = input.id && document.querySelector(`label[for="${input.id}"]`);
+    (label || input).click();
+    if (input.checked) return true;
+    // Label click did not land - fall back to the input itself.
+    if (label) input.click();
+    return input.checked;
+  }
+
+  const report = { selected: 0, expected: answers.length, ok: [], honorCode: null, ready: false, reason: "" };
+
+  // Preferred path: click the exact inputs the extractor lettered, so answer
+  // N cannot drift onto question M.
+  const useIds =
+    Array.isArray(optionIds) &&
+    optionIds.length === answers.length &&
+    optionIds.every((ids) => ids?.length && ids.every(Boolean));
+
   let questionElements = [];
-  
-  // First try specific Coursera selectors
-  const questionSelectors = [
-    '.rc-FormPartsQuestion',
-    '[data-test="quiz-question"]',
-    '.rc-QuizQuestion',
-    '[class*="FormPart"][class*="Question"]',
-    '.assessment-question',
-  ];
-
-  for (const selector of questionSelectors) {
-    const elements = document.querySelectorAll(selector);
-    if (elements.length > 0) {
-      questionElements = Array.from(elements);
-      console.log(`Found ${elements.length} questions using selector: ${selector}`);
-      break;
+  if (!useIds) {
+    console.log("No usable option ids, falling back to positional matching");
+    const questionSelectors = [
+      ".rc-FormPartsQuestion",
+      '[data-test="quiz-question"]',
+      ".rc-QuizQuestion",
+      '[class*="FormPart"][class*="Question"]',
+      ".assessment-question",
+    ];
+    for (const selector of questionSelectors) {
+      const elements = document.querySelectorAll(selector);
+      if (elements.length > 0) {
+        questionElements = Array.from(elements);
+        break;
+      }
     }
-  }
-
-  // Fallback: Find form control groups but FILTER to only actual quiz questions
-  if (questionElements.length === 0) {
-    const allInputGroups = document.querySelectorAll('[role="radiogroup"], [role="group"], .cds-213');
-    console.log(`Found ${allInputGroups.length} total input groups`);
-    
-    // Filter to only include groups that look like quiz questions
-    // Quiz questions typically have EXACTLY 4 radio button options
-    // The honor code checkbox is a single checkbox, so it will be filtered out
-    questionElements = Array.from(allInputGroups).filter(group => {
-      const radioInputs = group.querySelectorAll('input[type="radio"]');
-      const checkboxInputs = group.querySelectorAll('input[type="checkbox"]');
-      
-      // A quiz question typically has 3-5 radio options
-      // The honor code is a single checkbox with specific text
-      const isQuizQuestion = radioInputs.length >= 3 && radioInputs.length <= 6;
-      
-      // Also check it's not the honor code checkbox
-      const text = group.textContent.toLowerCase();
-      const isHonorCode = text.includes('understand that submitting') || 
-                          text.includes('academic integrity') ||
-                          text.includes("isn't my own") ||
-                          (checkboxInputs.length === 1 && radioInputs.length === 0);
-      
-      return isQuizQuestion && !isHonorCode;
-    });
-    
-    console.log(`After filtering: ${questionElements.length} actual quiz questions`);
-  }
-
-  if (questionElements.length === 0) {
-    console.log("No question elements found");
-    return;
-  }
-
-  // Make sure we have the right number of questions
-  if (questionElements.length !== answers.length) {
-    console.log(`Warning: Found ${questionElements.length} questions but have ${answers.length} answers`);
-    // Try to match by using the minimum
+    if (questionElements.length === 0) {
+      questionElements = Array.from(
+        document.querySelectorAll('[role="radiogroup"], [role="group"], .cds-213'),
+      ).filter((group) => {
+        const radios = group.querySelectorAll('input[type="radio"]');
+        const boxes = group.querySelectorAll('input[type="checkbox"]');
+        const text = group.textContent.toLowerCase();
+        const isHonorCode =
+          text.includes("understand that submitting") ||
+          text.includes("academic integrity") ||
+          text.includes("isn't my own") ||
+          (boxes.length === 1 && radios.length === 0);
+        return radios.length >= 3 && radios.length <= 6 && !isHonorCode;
+      });
+    }
   }
 
   answers.forEach((answer, index) => {
-    if (index >= questionElements.length) {
-      console.log(`Skipping answer ${index + 1} - no matching question element`);
+    const answerIndex = answer.charCodeAt(0) - 65; // A=0, B=1, ...
+    let target = null;
+
+    if (useIds) {
+      target = document.getElementById(optionIds[index][answerIndex]);
+    } else {
+      const questionEl = questionElements[index];
+      if (questionEl) {
+        let inputs = questionEl.querySelectorAll('input[type="radio"]');
+        if (inputs.length === 0) {
+          inputs = questionEl.querySelectorAll('input[type="checkbox"]');
+        }
+        target = inputs[answerIndex];
+      }
+    }
+
+    if (!target) {
+      console.log(`Question ${index + 1}: no input for answer ${answer}`);
+      report.ok[index] = false;
       return;
     }
-
-    const questionEl = questionElements[index];
-    console.log(`Processing question ${index + 1}, answer: ${answer}`);
-
-    // Map answer letter to index (A=0, B=1, C=2, D=3)
-    const answerIndex = answer.charCodeAt(0) - 65; // 'A' = 65 in ASCII
-
-    // Find radio inputs specifically (quiz answers are radio buttons)
-    let inputs = questionEl.querySelectorAll('input[type="radio"]');
-    
-    // Fallback to checkbox if no radio (some quizzes use checkboxes)
-    if (inputs.length === 0) {
-      inputs = questionEl.querySelectorAll('input[type="checkbox"]');
-    }
-
-    console.log(`Found ${inputs.length} options for question ${index + 1}`);
-
-    if (inputs[answerIndex]) {
-      const targetInput = inputs[answerIndex];
-      
-      // Try to click the input directly
-      targetInput.click();
-      console.log(`Clicked input for answer ${answer} on question ${index + 1}`);
-
-      // Also try clicking the parent label if it exists (for MUI components)
-      const parentLabel = targetInput.closest('label');
-      if (parentLabel) {
-        parentLabel.click();
-        console.log(`Also clicked parent label`);
-      }
-
-      // For MUI, try finding and clicking the checkbox wrapper
-      const checkboxWrapper = targetInput.closest('.cds-217, [class*="CheckboxRoot"]');
-      if (checkboxWrapper) {
-        checkboxWrapper.click();
-        console.log(`Also clicked checkbox wrapper`);
-      }
-
-      // Try dispatching events for React components
-      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
-      targetInput.dispatchEvent(event);
+    if (setChecked(target)) {
+      report.selected++;
+      report.ok[index] = true;
     } else {
-      console.log(`Could not find option ${answerIndex} for question ${index + 1}`);
+      console.log(`Question ${index + 1}: click did not register`);
+      report.ok[index] = false;
     }
   });
 
-  // --- Check Honor Code checkbox first ---
-  console.log("Looking for honor code checkbox...");
-  
-  setTimeout(() => {
-    // Find the honor code checkbox
-    const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
-    let honorCodeCheckbox = null;
-    
-    for (const cb of allCheckboxes) {
-      // Check if this checkbox is in a container with honor code text
-      const parent = cb.closest('.cds-213, [role="group"], label, div');
-      if (parent) {
-        const text = parent.textContent.toLowerCase();
-        if (text.includes('understand that submitting') || 
-            text.includes("isn't my own") ||
-            text.includes('permanent failure') ||
-            text.includes('deactivation')) {
-          honorCodeCheckbox = cb;
-          break;
-        }
-      }
-    }
-    
-    // Also try finding by looking for checkbox near submit area
-    if (!honorCodeCheckbox) {
-      const allGroups = document.querySelectorAll('.cds-213, [role="group"]');
-      for (const group of allGroups) {
-        const text = group.textContent.toLowerCase();
-        if (text.includes('understand that submitting') || text.includes("isn't my own")) {
-          honorCodeCheckbox = group.querySelector('input[type="checkbox"]');
-          if (honorCodeCheckbox) break;
-        }
-      }
-    }
-    
-    if (honorCodeCheckbox && !honorCodeCheckbox.checked) {
-      console.log("Found honor code checkbox, clicking it...");
-      honorCodeCheckbox.click();
-      
-      // Also try clicking parent label
-      const label = honorCodeCheckbox.closest('label');
-      if (label) label.click();
-      
-      // Dispatch event for React
-      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
-      honorCodeCheckbox.dispatchEvent(event);
-    } else if (honorCodeCheckbox) {
-      console.log("Honor code checkbox already checked");
-    } else {
-      console.log("Honor code checkbox not found (may not be required for this quiz)");
-    }
-    
-    // --- AUTO SUBMIT logic (after honor code is checked) ---
-    console.log("Looking for submit button...");
-    
-    // Wait a bit more for the submit button to become enabled after checking honor code
-    setTimeout(() => {
-      // Look for submit button with various selectors
-      let submitBtn = null;
-      
-      // Heuristic 1: Find buttons with "submit" text (case-insensitive)
-      const allButtons = Array.from(document.querySelectorAll('button'));
-      submitBtn = allButtons.find(btn => {
-        const text = btn.textContent.toLowerCase().trim();
-        // Match "Submit Quiz", "Submit", but not "Save" or disabled buttons
-        return (text.includes('submit') && !text.includes('save')) || 
-               (text === 'submit quiz');
-      });
+  if (report.selected < report.expected) {
+    report.reason = `only ${report.selected}/${report.expected} answers selected`;
+    return report;
+  }
 
-      // Heuristic 2: Look for specific Coursera selectors
-      if (!submitBtn) {
-        const submitSelectors = [
-          '[data-test="submit-button"]',
-          '[data-test="quiz-submit-button"]',
-          'button[type="submit"]',
-          '.rc-SubmitButton button',
-          '[data-testid="submit-button"]',
-        ];
-        
-        for (const selector of submitSelectors) {
-          submitBtn = document.querySelector(selector);
-          if (submitBtn) break;
-        }
-      }
+  // --- Honor code ---
+  const honorCodeBox = Array.from(
+    document.querySelectorAll('input[type="checkbox"]'),
+  ).find((cb) => {
+    const text = (cb.closest('.cds-213, [role="group"], label, div') || cb).textContent.toLowerCase();
+    return (
+      text.includes("understand that submitting") ||
+      text.includes("isn't my own") ||
+      text.includes("permanent failure") ||
+      text.includes("deactivation")
+    );
+  });
 
-      // Heuristic 3: Look for primary CDS buttons
-      if (!submitBtn) {
-        const primaryBtns = document.querySelectorAll('.cds-button--primary, button.primary');
-        submitBtn = Array.from(primaryBtns).find(btn => {
-          const text = btn.textContent.toLowerCase();
-          return text.includes('submit');
-        });
-      }
+  if (honorCodeBox) {
+    setChecked(honorCodeBox);
+    // React may re-render; confirm it really stuck before trusting Submit.
+    report.honorCode = await waitFor(() => honorCodeBox.checked, 5000) === true;
+    if (!report.honorCode) {
+      report.reason = "honor code checkbox would not stay checked";
+      return report;
+    }
+  }
 
-      if (submitBtn) {
-        if (submitBtn.disabled) {
-          console.log("Submit button found but still disabled. Honor code may not have been checked properly.");
-        } else {
-          console.log("Submit button found and enabled:", submitBtn.textContent);
-          console.log("Clicking submit...");
-          submitBtn.click();
-          console.log("Initial submit clicked!");
-          
-          // Handle confirmation dialog - wait for it to appear then click confirm
-          setTimeout(() => {
-            console.log("Looking for confirmation dialog submit button...");
-            
-            // Look for confirmation dialog buttons
-            const dialogBtns = Array.from(document.querySelectorAll('button'));
-            
-            // Try to find the "Submit" button in the confirmation dialog
-            let confirmBtn = dialogBtns.find(btn => {
-              const text = btn.textContent.toLowerCase().trim();
-              // The confirmation button usually says "Submit" and is not disabled
-              // Also check it's not the same button we already clicked
-              return text === 'submit' && !btn.disabled && btn !== submitBtn;
-            });
-            
-            // Also try looking for modal/dialog specific buttons
-            if (!confirmBtn) {
-              const modalBtns = document.querySelectorAll('[role="dialog"] button, .modal button, .cds-Modal button, [class*="Dialog"] button');
-              confirmBtn = Array.from(modalBtns).find(btn => {
-                const text = btn.textContent.toLowerCase().trim();
-                return (text === 'submit' || text.includes('confirm') || text === 'yes') && !btn.disabled;
-              });
-            }
-            
-            // Try primary button in any dialog
-            if (!confirmBtn) {
-              confirmBtn = document.querySelector('[role="dialog"] .cds-button--primary, [role="dialog"] button.primary');
-            }
-            
-            if (confirmBtn && !confirmBtn.disabled) {
-              console.log("Found confirmation button:", confirmBtn.textContent);
-              confirmBtn.click();
-              console.log("Assignment submitted with confirmation!");
-            } else {
-              console.log("No confirmation dialog found or button disabled. Initial submission may have completed.");
-            }
-          }, 3000); // Wait 3 seconds for the confirmation dialog to appear
-        }
-      } else {
-        console.log("Submit button not found. Manual submission required.");
-      }
-    }, 1000); // Wait 1 second after honor code check before looking for submit button
-  }, 1500); // Wait 1.5 seconds after answer selection before checking honor code
+  report.ready = true;
+  return report;
+}
+
+// Submit is its own injected pass so the popup can put a cancellable countdown
+// between choosing answers and committing them. Selection is reversible on the
+// page; this is not.
+async function submitOnPage() {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Duplicated from selectAnswersOnPage on purpose: executeScript serializes
+  // the function, so it cannot close over anything outside itself.
+  async function waitFor(check, timeoutMs = 15000) {
+    const deadline = Date.now() + timeoutMs;
+    do {
+      const hit = check();
+      if (hit) return hit;
+      await sleep(250);
+    } while (Date.now() < deadline);
+    return null;
+  }
+
+  const findSubmit = () => {
+    const byText = Array.from(document.querySelectorAll("button")).find((btn) => {
+      const text = btn.textContent.toLowerCase().trim();
+      return !btn.disabled && text.includes("submit") && !text.includes("save");
+    });
+    if (byText) return byText;
+    for (const sel of [
+      '[data-test="submit-button"]',
+      '[data-test="quiz-submit-button"]',
+      'button[type="submit"]',
+      ".rc-SubmitButton button",
+      '[data-testid="submit-button"]',
+    ]) {
+      const btn = document.querySelector(sel);
+      if (btn && !btn.disabled) return btn;
+    }
+    return null;
+  };
+
+  // Poll instead of guessing 1000ms - the button enables when React catches up.
+  const submitBtn = await waitFor(findSubmit);
+  if (!submitBtn) {
+    return { submitted: false, reason: "submit button never became enabled" };
+  }
+
+  submitBtn.click();
+
+  // Confirmation dialog, if this quiz uses one.
+  const confirmBtn = await waitFor(() => {
+    const inDialog = document.querySelectorAll(
+      '[role="dialog"] button, .cds-Modal button, [class*="Dialog"] button',
+    );
+    return Array.from(inDialog).find((btn) => {
+      const text = btn.textContent.toLowerCase().trim();
+      return !btn.disabled && (text === "submit" || text.includes("confirm") || text === "yes");
+    });
+  }, 8000);
+
+  if (confirmBtn) confirmBtn.click();
+
+  return { submitted: true, reason: "" };
+}
+
+// Run the submit pass in the page.
+async function submitQuiz(tabId) {
+  const [{ result }] = await chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    func: submitOnPage,
+  });
+  return result;
+}
+
+// Tried first, in this order. Pinned stable models have their own capacity;
+// the shared "-latest" aliases are the ones that get hammered, so they go last.
+// These are also the highest free-tier quota models.
+const PREFERRED_MODELS = [
+  "gemini-2.0-flash",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-flash-latest",
+];
+
+let lastModelError = "";
+// Which model actually produced the answer, for the "Ask Gemini" badge.
+let lastModelUsed = "";
+
+// Ask Google which models exist rather than hardcoding names that go stale.
+// Cached for a day in storage.
+async function fetchModels(apiKey) {
+  const cache = await chrome.storage.local.get(["models", "modelsAt"]);
+  if (cache.models?.length && Date.now() - cache.modelsAt < 86400000) {
+    return cache.models;
+  }
+
+  try {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
+      { headers: { "x-goog-api-key": apiKey } },
+    );
+    if (!res.ok) {
+      lastModelError = (await res.json()).error?.message || res.statusText;
+      return [];
+    }
+
+    // Keep general-purpose flash text models; drop preview/experimental and the
+    // image/audio/live variants that cannot answer a plain text prompt.
+    const skip = /preview|exp|image|audio|tts|live|native|thinking|embedding/;
+    const models = (await res.json()).models
+      .filter(
+        (m) =>
+          m.supportedGenerationMethods?.includes("generateContent") &&
+          m.name.includes("flash") &&
+          !skip.test(m.name),
+      )
+      .map((m) => m.name.replace("models/", ""));
+
+    if (models.length) {
+      await chrome.storage.local.set({ models, modelsAt: Date.now() });
+    }
+    return models;
+  } catch (e) {
+    lastModelError = e.message;
+    return [];
+  }
 }
 
 // Get AI answers from Gemini
 async function getAIAnswers(questions, questionCount) {
+  // Preferred names first, then whatever else Google lists. No backoff between
+  // them, so six quick failures still costs only a few seconds.
   const modelNames = [
-    "gemini-3.8-flash",
-    "gemini-3.7-flash",
-    "gemini-3.5-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.6-flash",
-  ];
+    ...new Set(PREFERRED_MODELS.concat(await fetchModels(currentApiKey))),
+  ].slice(0, 6);
 
   const prompt = `You are a quiz answering assistant. There are exactly ${questionCount} questions below. You MUST answer ALL ${questionCount} questions.
 
@@ -667,49 +792,75 @@ Questions:
 ${questions}`;
 
   const requestBody = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: prompt }],
-      },
-    ],
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 4000,
+      // Generous: reasoning models spend part of this budget before emitting text.
+      maxOutputTokens: 8192,
     },
   };
 
   let lastError = null;
+  let overloaded = false;
+  let quotaExhausted = false;
+  const tried = [];
 
+  // An overloaded model is not worth waiting on - the next model in the list
+  // is the whole point of having a list. Fail over immediately, and only give
+  // up once every model has been tried.
   for (const modelName of modelNames) {
     try {
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
-
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": currentApiKey,
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": currentApiKey,
+          },
+          body: JSON.stringify(requestBody),
         },
-        body: JSON.stringify(requestBody),
-      });
+      );
 
       if (!response.ok) {
         const err = await response.json();
         lastError = err.error?.message || response.statusText;
+        tried.push(`${modelName} (${response.status})`);
+        // 503 is Google out of capacity; 429 is YOUR quota gone. Very different
+        // fixes, so do not report them as the same thing.
+        if (response.status === 503) overloaded = true;
+        if (response.status === 429) quotaExhausted = true;
         continue;
       }
 
       const data = await response.json();
-      return data.candidates[0].content.parts[0].text;
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        lastModelUsed = modelName;
+        return text;
+      }
+
+      lastError = `${modelName} returned no text (finishReason: ${data.candidates?.[0]?.finishReason || "unknown"})`;
+      tried.push(`${modelName} (empty)`);
     } catch (err) {
       lastError = err.message;
+      tried.push(`${modelName} (${err.message})`);
     }
   }
 
-  throw new Error(
-    `All models failed. Last error: ${lastError}. Check your API key permissions.`,
-  );
+  console.log("Models tried:", tried.join(", "));
+
+  if (quotaExhausted) {
+    throw new Error(
+      `Gemini quota exhausted (429) on: ${tried.join(", ")}. Free-tier limits reset daily - check aistudio.google.com/apikey, or enable billing.`,
+    );
+  }
+  if (overloaded) {
+    throw new Error(
+      `Google has no capacity right now (503) on: ${tried.join(", ")}. Wait a few minutes and retry.`,
+    );
+  }
+  throw new Error(`All models failed: ${lastError}. Tried: ${tried.join(", ")}`);
 }
 
 // Utility: Show status message
@@ -733,12 +884,7 @@ function hideAnswerBox() {
 // Utility: Set button loading state
 function setButtonLoading(button, loading, text) {
   button.disabled = loading;
-  if (loading) {
-    button.querySelector("span").innerHTML =
-      `<span class="loading"></span>${text}`;
-  } else {
-    button.querySelector("span").textContent = text;
-  }
+  (button.querySelector("span") || button).textContent = text;
 }
 
 // Direct extraction function
