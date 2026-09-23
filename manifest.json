@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Coursera Quiz Solver & Auto-Submit",
-  "version": "3.1.0",
+  "name": "Coursera Quiz Helper",
+  "version": "4.0.0",
   "author": "Rahul Gotrekiya",
-  "description": "One-click quiz solver: automatically answers questions, checks honor code, and submits assignments using Gemini AI",
+  "description": "Reads a Coursera quiz, asks Gemini, and selects the answers on the page. You tick the honor code and submit yourself.",
   "permissions": [
     "activeTab",
     "scripting",
