@@ -31,10 +31,10 @@ assert.deepStrictEqual(got.sort(), [
 ]);
 assert.deepStrictEqual(pick([]), []);
 
-// The regex in popup.js must stay in sync with the one above.
+// The regex in background.js must stay in sync with the one above.
 assert.ok(
-  readFileSync("popup.js", "utf8").includes(String(skip)),
-  "skip regex drifted from popup.js",
+  readFileSync("background.js", "utf8").includes(String(skip)),
+  "skip regex drifted from background.js",
 );
 
 console.log("ok");
@@ -55,6 +55,7 @@ console.log("ok: answer parsing");
 // --- every id popup.js looks up must exist in popup.html ---
 // A rename in one file silently produces null derefs in the other.
 const js = readFileSync("popup.js", "utf8");
+const bg = readFileSync("background.js", "utf8");
 const html = readFileSync("popup.html", "utf8");
 const looked = [...js.matchAll(/getElementById\("([^"]+)"\)/g)].map((m) => m[1]);
 assert.ok(looked.length > 10, "expected popup.js to look up many ids");
@@ -147,7 +148,7 @@ assert.strictEqual(isDisabled(el({ disabled: false })), false, "no attribute");
 // The mirror above only proves the logic is right, not that popup.js uses it,
 // so assert against the real source. Both injected functions need their own
 // copy: executeScript serializes them, so a shared helper cannot be closed over.
-const bodies = [...js.matchAll(/function isDisabled\(el\) \{([^}]*)\}/g)].map(
+const bodies = [...bg.matchAll(/function isDisabled\(el\) \{([^}]*)\}/g)].map(
   (m) => m[1],
 );
 assert.strictEqual(bodies.length, 1, "the selection pass needs its own isDisabled copy");
@@ -163,8 +164,9 @@ for (const body of bodies) {
 // isHonorCode still appears, and should: it is the filter that stops the
 // attestation group being mistaken for a question. What must stay gone is the
 // handle we used to tick it.
-assert.ok(!/honorCodeBox/.test(js), "the extension must not tick the honor-code checkbox");
-assert.ok(!/submitBtn|submitQuiz|submitOnPage/.test(js), "the extension must not submit");
+const allCode = js + bg;
+assert.ok(!/honorCodeBox/.test(allCode), "the extension must not tick the honor-code checkbox");
+assert.ok(!/submitBtn|submitQuiz|submitOnPage/.test(allCode), "the extension must not submit");
 
 console.log("ok: disabled detection");
 
@@ -205,3 +207,21 @@ assert.ok(startAt !== -1, "setDots must start a timer");
 assert.ok(clearAt < startAt, "the clear must come before the start");
 
 console.log(`ok: dot loader (${frames.length} frames)`);
+
+// --- popup must stay a renderer ---
+// The whole point of the worker is that a run outlives the popup. If any of
+// the engine drifts back into popup.js, closing the popup kills the run again.
+for (const name of ["getAIAnswers", "fetchModels", "selectAnswersOnPage", "extractQuestionsDirectly"]) {
+  assert.ok(bg.includes(`function ${name}`), `${name} must live in background.js`);
+  assert.ok(!js.includes(`function ${name}`), `${name} must not be back in popup.js`);
+}
+
+// A worker that is not declared simply never runs, with no error anywhere.
+const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
+assert.strictEqual(
+  manifest.background?.service_worker,
+  "background.js",
+  "manifest must declare the service worker",
+);
+
+console.log("ok: popup/worker split");
