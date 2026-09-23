@@ -147,3 +147,50 @@ assert.ok(/font-weight:\s*400/.test(title), "the serif headline stays at weight 
 assert.ok(/font-size:\s*(4[89]|[5-9]\d|1\d\d)px/.test(title), "headline must be >= 48px");
 
 console.log(`ok: design guards (${sizes.length} type sizes, min ${Math.min(...sizes)}px)`);
+
+// --- disabled detection ---
+// Coursera CDS buttons keep .disabled === false and mark unavailability with
+// aria-disabled, so checking the property alone finds a dead button, clicks
+// it, and reports success. Mirror of isDisabled() in popup.js.
+const isDisabled = (el) =>
+  el.disabled === true || el.getAttribute("aria-disabled") === "true";
+
+const el = (props, attrs = {}) => ({
+  ...props,
+  getAttribute: (k) => (k in attrs ? attrs[k] : null),
+});
+
+assert.strictEqual(isDisabled(el({ disabled: true })), true, "plain disabled");
+assert.strictEqual(
+  isDisabled(el({ disabled: false }, { "aria-disabled": "true" })),
+  true,
+  "aria-disabled must count as disabled - this is the real Coursera case",
+);
+assert.strictEqual(
+  isDisabled(el({ disabled: false }, { "aria-disabled": "false" })),
+  false,
+  "aria-disabled=false is enabled",
+);
+assert.strictEqual(isDisabled(el({ disabled: false })), false, "no attribute");
+
+// The mirror above only proves the logic is right, not that popup.js uses it,
+// so assert against the real source. Both injected functions need their own
+// copy: executeScript serializes them, so a shared helper cannot be closed over.
+const bodies = [...js.matchAll(/function isDisabled\(el\) \{([^}]*)\}/g)].map(
+  (m) => m[1],
+);
+assert.strictEqual(bodies.length, 2, "each injected function needs its own isDisabled copy");
+for (const body of bodies) {
+  assert.ok(
+    body.includes('getAttribute("aria-disabled") === "true"'),
+    "isDisabled must check aria-disabled, not just the .disabled property",
+  );
+}
+
+// Success must be evidence-based, not click-based.
+assert.ok(
+  js.includes("submit was clicked but the page never changed"),
+  "submitOnPage must verify the click actually did something",
+);
+
+console.log("ok: disabled detection");

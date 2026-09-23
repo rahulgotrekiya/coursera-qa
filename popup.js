@@ -418,10 +418,16 @@ async function selectAnswersOnPage(answers, optionIds) {
     return null;
   }
 
+  // See submitOnPage: aria-disabled is how CDS marks a control unavailable.
+  function isDisabled(el) {
+    return el.disabled === true || el.getAttribute("aria-disabled") === "true";
+  }
+
   // Click exactly once. Clicking the input AND its label AND dispatching a
   // synthetic event toggles a checkbox an even number of times and silently
   // leaves it OFF - which is why submit sometimes stayed disabled.
   function setChecked(input) {
+    if (isDisabled(input)) return false;
     if (input.checked) return true;
     const label = input.id && document.querySelector(`label[for="${input.id}"]`);
     (label || input).click();
@@ -555,10 +561,17 @@ async function submitOnPage() {
     return null;
   }
 
+  // Coursera CDS buttons stay focusable when unavailable: they set
+  // aria-disabled="true" and leave the .disabled property false. Checking
+  // only .disabled finds a dead button, clicks it, and nothing happens.
+  function isDisabled(el) {
+    return el.disabled === true || el.getAttribute("aria-disabled") === "true";
+  }
+
   const findSubmit = () => {
     const byText = Array.from(document.querySelectorAll("button")).find((btn) => {
       const text = btn.textContent.toLowerCase().trim();
-      return !btn.disabled && text.includes("submit") && !text.includes("save");
+      return !isDisabled(btn) && text.includes("submit") && !text.includes("save");
     });
     if (byText) return byText;
     for (const sel of [
@@ -569,7 +582,7 @@ async function submitOnPage() {
       '[data-testid="submit-button"]',
     ]) {
       const btn = document.querySelector(sel);
-      if (btn && !btn.disabled) return btn;
+      if (btn && !isDisabled(btn)) return btn;
     }
     return null;
   };
@@ -577,9 +590,10 @@ async function submitOnPage() {
   // Poll instead of guessing 1000ms - the button enables when React catches up.
   const submitBtn = await waitFor(findSubmit);
   if (!submitBtn) {
-    return { submitted: false, reason: "submit button never became enabled" };
+    return { submitted: false, reason: "the submit button never became enabled" };
   }
 
+  const startUrl = location.href;
   submitBtn.click();
 
   // Confirmation dialog, if this quiz uses one.
@@ -589,11 +603,29 @@ async function submitOnPage() {
     );
     return Array.from(inDialog).find((btn) => {
       const text = btn.textContent.toLowerCase().trim();
-      return !btn.disabled && (text === "submit" || text.includes("confirm") || text === "yes");
+      return !isDisabled(btn) && (text === "submit" || text.includes("confirm") || text === "yes");
     });
   }, 8000);
 
   if (confirmBtn) confirmBtn.click();
+
+  // Never report success just because a click was dispatched. A submit that
+  // worked always changes something: the page navigates, or React tears the
+  // button out, or it goes disabled. No change means the click did nothing.
+  const landed = await waitFor(
+    () =>
+      location.href !== startUrl ||
+      !document.contains(submitBtn) ||
+      isDisabled(submitBtn),
+    12000,
+  );
+
+  if (!landed) {
+    return {
+      submitted: false,
+      reason: "submit was clicked but the page never changed",
+    };
+  }
 
   return { submitted: true, reason: "" };
 }
