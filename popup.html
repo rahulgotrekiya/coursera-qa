@@ -22,7 +22,6 @@
         --ink: #1a1a1a;
         --lavender: #f0d7ff;
         --forest: #034f46;
-        --ember: #ffa946;
         --fog: #8a8a80;
         --stone: #e4e4d0;
 
@@ -227,36 +226,6 @@
         cursor: not-allowed;
       }
 
-      /* ---------- countdown ---------- */
-
-      .countdown {
-        display: none;
-        margin-top: 24px;
-      }
-
-      .countdown.visible {
-        display: block;
-      }
-
-      .cd-head {
-        font-size: 16px;
-        margin-bottom: 10px;
-      }
-
-      .cd-track {
-        height: 8px;
-        border: 2px solid var(--ink);
-        border-radius: 9999px;
-        overflow: hidden;
-        margin-bottom: 14px;
-      }
-
-      .cd-bar {
-        height: 100%;
-        width: 100%;
-        background: var(--ember);
-      }
-
       /* ---------- key ---------- */
 
       .key-bar {
@@ -363,17 +332,11 @@
       <div id="answers"></div>
 
       <div id="mainActions" class="actions">
-        <button class="btn btn-cta" id="solveBtn">Solve &amp; Submit</button>
+        <button class="btn btn-cta" id="solveBtn">Answer questions</button>
         <button class="link" id="copyBtn">Copy questions</button>
       </div>
 
-      <div id="countdown" class="countdown">
-        <div class="cd-head" id="cdText">Submitting…</div>
-        <div class="cd-track"><div class="cd-bar" id="cdBar"></div></div>
-        <button class="btn" id="cancelBtn">Cancel</button>
-      </div>
-
-      <div class="key-bar" id="apiStatusBar">
+ <div class="key-bar" id="apiStatusBar">
         <div class="key-left">
           <span class="status-dot" id="statusDot"></span>
           <span class="status-text" id="statusText">No key</span>

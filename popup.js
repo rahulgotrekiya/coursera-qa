@@ -12,11 +12,6 @@ const statusDiv = document.getElementById("status");
 const stateTitle = document.getElementById("stateTitle");
 const answersEl = document.getElementById("answers");
 const waveEl = document.getElementById("wave");
-const countdownEl = document.getElementById("countdown");
-const cdText = document.getElementById("cdText");
-const cdBar = document.getElementById("cdBar");
-const cancelBtn = document.getElementById("cancelBtn");
-
 // The headline is the whole progress display: one word, rewritten in place.
 // busy also drives the waveform, so a state cannot animate without saying why.
 function setState(word, busy = false) {
@@ -36,48 +31,6 @@ function showAnswers(letters, ok) {
 
 function clearAnswers() {
   answersEl.innerHTML = "";
-}
-
-// --------------------------------------------------------------- countdown
-// Pure so it can be asserted without a DOM. Returns what the bar should show.
-function countdownFrame(remainingMs, totalMs) {
-  const clamped = Math.max(0, Math.min(remainingMs, totalMs));
-  return {
-    seconds: Math.ceil(clamped / 1000),
-    percent: totalMs > 0 ? (clamped / totalMs) * 100 : 0,
-  };
-}
-
-// Resolves true to go ahead, false if the user hit Cancel. Submitting a graded
-// attempt is irreversible, so this is the last exit.
-function runCountdown(seconds = 5) {
-  return new Promise((resolve) => {
-    const total = seconds * 1000;
-    const startedAt = Date.now();
-    countdownEl.classList.add("visible");
-
-    const paint = () => {
-      const { seconds: s, percent } = countdownFrame(
-        total - (Date.now() - startedAt),
-        total,
-      );
-      cdText.textContent = `Submitting in ${s}s`;
-      cdBar.style.width = `${percent}%`;
-      return percent <= 0;
-    };
-    paint();
-
-    const finish = (ok) => {
-      clearInterval(timer);
-      cancelBtn.onclick = null;
-      countdownEl.classList.remove("visible");
-      resolve(ok);
-    };
-    const timer = setInterval(() => {
-      if (paint()) finish(true);
-    }, 50);
-    cancelBtn.onclick = () => finish(false);
-  });
 }
 
 let currentApiKey = null;
@@ -290,27 +243,13 @@ solveBtn.addEventListener("click", async () => {
       return;
     }
 
-    setState("Ready to submit");
-    showStatus(`${lastModelUsed || "gemini"} answered ${report.selected} of ${n}`, "info");
-
-    if (!(await runCountdown(5))) {
-      setState("Cancelled");
-      showStatus("Answers are selected on the page. Submit when you want.", "info");
-      return;
-    }
-
-    setState("Submitting", true);
-    const submitReport = await submitQuiz(tab.id);
-    if (submitReport?.submitted) {
-      setState("Submitted");
-      showStatus(`${report.selected} of ${n} answered`, "info");
-    } else {
-      setState("Stopped");
-      showStatus(
-        `${submitReport?.reason || "submit failed"}. Answers are selected - submit yourself.`,
-        "error",
-      );
-    }
+    // Stops here on purpose. The honor-code checkbox is an attestation in
+    // your name, so you tick it and you press Submit.
+    setState("Your turn");
+    showStatus(
+      `${lastModelUsed || "gemini"} answered ${report.selected} of ${n}. Tick the honor-code box on the page, then press Submit yourself.`,
+      "info",
+    );
   } catch (error) {
     console.error("Error:", error);
     setState("Failed");
@@ -405,9 +344,8 @@ async function autoSelectAnswers(tabId, aiResponse, optionIds) {
 async function selectAnswersOnPage(answers, optionIds) {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // Coursera renders asynchronously and enables Submit only after the honor
-  // code registers in React state. Fixed timeouts lose that race on a slow
-  // page, so wait for the condition itself.
+  // Coursera renders asynchronously, so options may not exist yet. Fixed
+  // timeouts lose that race on a slow page; wait for the condition itself.
   async function waitFor(check, timeoutMs = 15000) {
     const deadline = Date.now() + timeoutMs;
     do {
@@ -418,7 +356,9 @@ async function selectAnswersOnPage(answers, optionIds) {
     return null;
   }
 
-  // See submitOnPage: aria-disabled is how CDS marks a control unavailable.
+  // Coursera CDS marks a control unavailable with aria-disabled while leaving
+  // the .disabled property false, so checking the property alone ticks inputs
+  // that never register.
   function isDisabled(el) {
     return el.disabled === true || el.getAttribute("aria-disabled") === "true";
   }
@@ -437,7 +377,7 @@ async function selectAnswersOnPage(answers, optionIds) {
     return input.checked;
   }
 
-  const report = { selected: 0, expected: answers.length, ok: [], honorCode: null, ready: false, reason: "" };
+  const report = { selected: 0, expected: answers.length, ok: [], ready: false, reason: "" };
 
   // Preferred path: click the exact inputs the extractor lettered, so answer
   // N cannot drift onto question M.
@@ -516,127 +456,8 @@ async function selectAnswersOnPage(answers, optionIds) {
     return report;
   }
 
-  // --- Honor code ---
-  const honorCodeBox = Array.from(
-    document.querySelectorAll('input[type="checkbox"]'),
-  ).find((cb) => {
-    const text = (cb.closest('.cds-213, [role="group"], label, div') || cb).textContent.toLowerCase();
-    return (
-      text.includes("understand that submitting") ||
-      text.includes("isn't my own") ||
-      text.includes("permanent failure") ||
-      text.includes("deactivation")
-    );
-  });
-
-  if (honorCodeBox) {
-    setChecked(honorCodeBox);
-    // React may re-render; confirm it really stuck before trusting Submit.
-    report.honorCode = await waitFor(() => honorCodeBox.checked, 5000) === true;
-    if (!report.honorCode) {
-      report.reason = "honor code checkbox would not stay checked";
-      return report;
-    }
-  }
-
   report.ready = true;
   return report;
-}
-
-// Submit is its own injected pass so the popup can put a cancellable countdown
-// between choosing answers and committing them. Selection is reversible on the
-// page; this is not.
-async function submitOnPage() {
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  // Duplicated from selectAnswersOnPage on purpose: executeScript serializes
-  // the function, so it cannot close over anything outside itself.
-  async function waitFor(check, timeoutMs = 15000) {
-    const deadline = Date.now() + timeoutMs;
-    do {
-      const hit = check();
-      if (hit) return hit;
-      await sleep(250);
-    } while (Date.now() < deadline);
-    return null;
-  }
-
-  // Coursera CDS buttons stay focusable when unavailable: they set
-  // aria-disabled="true" and leave the .disabled property false. Checking
-  // only .disabled finds a dead button, clicks it, and nothing happens.
-  function isDisabled(el) {
-    return el.disabled === true || el.getAttribute("aria-disabled") === "true";
-  }
-
-  const findSubmit = () => {
-    const byText = Array.from(document.querySelectorAll("button")).find((btn) => {
-      const text = btn.textContent.toLowerCase().trim();
-      return !isDisabled(btn) && text.includes("submit") && !text.includes("save");
-    });
-    if (byText) return byText;
-    for (const sel of [
-      '[data-test="submit-button"]',
-      '[data-test="quiz-submit-button"]',
-      'button[type="submit"]',
-      ".rc-SubmitButton button",
-      '[data-testid="submit-button"]',
-    ]) {
-      const btn = document.querySelector(sel);
-      if (btn && !isDisabled(btn)) return btn;
-    }
-    return null;
-  };
-
-  // Poll instead of guessing 1000ms - the button enables when React catches up.
-  const submitBtn = await waitFor(findSubmit);
-  if (!submitBtn) {
-    return { submitted: false, reason: "the submit button never became enabled" };
-  }
-
-  const startUrl = location.href;
-  submitBtn.click();
-
-  // Confirmation dialog, if this quiz uses one.
-  const confirmBtn = await waitFor(() => {
-    const inDialog = document.querySelectorAll(
-      '[role="dialog"] button, .cds-Modal button, [class*="Dialog"] button',
-    );
-    return Array.from(inDialog).find((btn) => {
-      const text = btn.textContent.toLowerCase().trim();
-      return !isDisabled(btn) && (text === "submit" || text.includes("confirm") || text === "yes");
-    });
-  }, 8000);
-
-  if (confirmBtn) confirmBtn.click();
-
-  // Never report success just because a click was dispatched. A submit that
-  // worked always changes something: the page navigates, or React tears the
-  // button out, or it goes disabled. No change means the click did nothing.
-  const landed = await waitFor(
-    () =>
-      location.href !== startUrl ||
-      !document.contains(submitBtn) ||
-      isDisabled(submitBtn),
-    12000,
-  );
-
-  if (!landed) {
-    return {
-      submitted: false,
-      reason: "submit was clicked but the page never changed",
-    };
-  }
-
-  return { submitted: true, reason: "" };
-}
-
-// Run the submit pass in the page.
-async function submitQuiz(tabId) {
-  const [{ result }] = await chrome.scripting.executeScript({
-    target: { tabId: tabId },
-    func: submitOnPage,
-  });
-  return result;
 }
 
 // Tried first, in this order. Pinned stable models have their own capacity;

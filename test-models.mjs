@@ -52,35 +52,6 @@ assert.deepStrictEqual(parse("no answers here"), []);
 
 console.log("ok: answer parsing");
 
-// --- countdown math: drives both the "Submitting in Ns" label and the bar ---
-// Mirror of countdownFrame() in popup.js. If you change one, change both.
-const countdownFrame = (remainingMs, totalMs) => {
-  const clamped = Math.max(0, Math.min(remainingMs, totalMs));
-  return {
-    seconds: Math.ceil(clamped / 1000),
-    percent: totalMs > 0 ? (clamped / totalMs) * 100 : 0,
-  };
-};
-
-// Ceil, not round: 4001ms must read "5s", never "4s" while 4s is still left.
-assert.deepStrictEqual(countdownFrame(5000, 5000), { seconds: 5, percent: 100 });
-assert.deepStrictEqual(countdownFrame(4001, 5000).seconds, 5);
-assert.deepStrictEqual(countdownFrame(4000, 5000).seconds, 4);
-assert.deepStrictEqual(countdownFrame(1, 5000).seconds, 1, "never shows 0s early");
-assert.deepStrictEqual(countdownFrame(0, 5000), { seconds: 0, percent: 0 });
-
-// A slow tick can overshoot past zero; the bar must not go negative or the
-// label report a negative countdown.
-assert.deepStrictEqual(countdownFrame(-800, 5000), { seconds: 0, percent: 0 });
-assert.ok(countdownFrame(9999, 5000).percent <= 100, "bar must not exceed 100%");
-
-assert.ok(
-  readFileSync("popup.js", "utf8").includes("function countdownFrame("),
-  "countdownFrame drifted out of popup.js",
-);
-
-console.log("ok: countdown");
-
 // --- every id popup.js looks up must exist in popup.html ---
 // A rename in one file silently produces null derefs in the other.
 const js = readFileSync("popup.js", "utf8");
@@ -179,7 +150,7 @@ assert.strictEqual(isDisabled(el({ disabled: false })), false, "no attribute");
 const bodies = [...js.matchAll(/function isDisabled\(el\) \{([^}]*)\}/g)].map(
   (m) => m[1],
 );
-assert.strictEqual(bodies.length, 2, "each injected function needs its own isDisabled copy");
+assert.strictEqual(bodies.length, 1, "the selection pass needs its own isDisabled copy");
 for (const body of bodies) {
   assert.ok(
     body.includes('getAttribute("aria-disabled") === "true"'),
@@ -187,10 +158,12 @@ for (const body of bodies) {
   );
 }
 
-// Success must be evidence-based, not click-based.
-assert.ok(
-  js.includes("submit was clicked but the page never changed"),
-  "submitOnPage must verify the click actually did something",
-);
+// The extension must not tick the honor-code box or press Submit: that
+// attestation is the users to make. Guard against either creeping back.
+// isHonorCode still appears, and should: it is the filter that stops the
+// attestation group being mistaken for a question. What must stay gone is the
+// handle we used to tick it.
+assert.ok(!/honorCodeBox/.test(js), "the extension must not tick the honor-code checkbox");
+assert.ok(!/submitBtn|submitQuiz|submitOnPage/.test(js), "the extension must not submit");
 
 console.log("ok: disabled detection");
