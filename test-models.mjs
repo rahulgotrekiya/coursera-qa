@@ -112,34 +112,38 @@ for (const u of urls) {
 
 console.log(`ok: ${urls.length} bundled asset(s) present`);
 
-// --- design-system guards (GSAP language) ---
-// These are the rules easiest to regress by pasting in a snippet from
-// elsewhere, and each one is visible the moment it breaks.
+// --- design-system guards (Wispr Flow language) ---
+// The rules easiest to regress by pasting a snippet in from somewhere else.
 const css = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
 const code = css.replace(/\/\*[\s\S]*?\*\//g, ""); // drop comments
 
-assert.ok(
-  !/#fff\b|#ffffff\b|#000\b|#000000\b/i.test(code),
-  "pure white/black break the cream-on-off-black pairing",
-);
-assert.ok(!/box-shadow/i.test(code), "depth comes from surface steps, not shadow");
+assert.ok(!/box-shadow/i.test(code), "the system is border-driven, never shadowed");
+assert.ok(!/gradient/i.test(code), "the palette is flat - no gradient fills");
 
-// Buttons are outlined-only; the CTA escalates to a gradient *stroke*, never a
-// fill. A solid background on .btn is the one change that would break the look.
-const btnBlock = code.slice(code.indexOf(".btn {"), code.indexOf(".btn:hover"));
-assert.ok(
-  /background:\s*transparent/.test(btnBlock),
-  ".btn must stay transparent - the system has no filled CTAs",
-);
+// Interactive surfaces carry a 2px ink border; that weight is the signature.
+for (const sel of [".btn {", "input[type=\"password\"] {"]) {
+  const block = code.slice(code.indexOf(sel), code.indexOf("}", code.indexOf(sel)));
+  assert.ok(
+    /border:\s*2px solid/.test(block),
+    `${sel.trim()} must keep its 2px border`,
+  );
+}
 
-// Body type floor: the guide forbids anything under 14px.
-const sizes = [...code.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].map((m) =>
-  Number(m[1]),
-);
-assert.ok(sizes.length > 5, "expected several font-size declarations");
-assert.ok(
-  Math.min(...sizes) >= 14,
-  `type floor is 14px, found ${Math.min(...sizes)}px`,
-);
+// Controls never go below 12px radius. Scoped to controls on purpose: the
+// waveform bars are 1px-rounded decoration, not geometry the rule governs.
+for (const sel of [".btn {", "input[type=\"password\"] {"]) {
+  const block = code.slice(code.indexOf(sel), code.indexOf("}", code.indexOf(sel)));
+  const r = Number(block.match(/border-radius:\s*(\d+)px/)?.[1]);
+  assert.ok(r >= 12, `${sel.trim()} radius is ${r}px, floor is 12px`);
+}
+
+// Body type floor.
+const sizes = [...code.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].map((m) => Number(m[1]));
+assert.ok(Math.min(...sizes) >= 14, `type floor is 14px, found ${Math.min(...sizes)}px`);
+
+// The display headline commands through scale, not weight.
+const title = code.slice(code.indexOf("#stateTitle"), code.indexOf("}", code.indexOf("#stateTitle")));
+assert.ok(/font-weight:\s*400/.test(title), "the serif headline stays at weight 400");
+assert.ok(/font-size:\s*(4[89]|[5-9]\d|1\d\d)px/.test(title), "headline must be >= 48px");
 
 console.log(`ok: design guards (${sizes.length} type sizes, min ${Math.min(...sizes)}px)`);

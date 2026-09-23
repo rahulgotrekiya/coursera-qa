@@ -1,6 +1,5 @@
 // UI Elements
 const apiSection = document.getElementById("apiSection");
-const mainActions = document.getElementById("mainActions");
 const apiStatusBar = document.getElementById("apiStatusBar");
 const statusDot = document.getElementById("statusDot");
 const statusText = document.getElementById("statusText");
@@ -10,118 +9,33 @@ const apiKeyInput = document.getElementById("apiKey");
 const solveBtn = document.getElementById("solveBtn");
 const copyBtn = document.getElementById("copyBtn");
 const statusDiv = document.getElementById("status");
-const statsDiv = document.getElementById("stats");
-const answerBox = document.getElementById("answerBox");
-const answerText = document.getElementById("answerText");
-const pipelineEl = document.getElementById("pipeline");
+const stateTitle = document.getElementById("stateTitle");
+const answersEl = document.getElementById("answers");
+const waveEl = document.getElementById("wave");
 const countdownEl = document.getElementById("countdown");
 const cdText = document.getElementById("cdText");
 const cdBar = document.getElementById("cdBar");
 const cancelBtn = document.getElementById("cancelBtn");
-const dotsEl = document.getElementById("dots");
 
-// ---------------------------------------------------------------- pipeline UI
-// The solve flow is four stages that can each take seconds. Showing which one
-// is running is the difference between "slow" and "broken".
-
-const ICONS = {
-  pending: `<circle cx="12" cy="12" r="9"/>`,
-  "in-progress": `<circle class="spin" cx="12" cy="12" r="9" stroke-dasharray="4 4"/>`,
-  completed: `<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-4.5"/>`,
-  "need-help": `<circle cx="12" cy="12" r="9"/><path d="M12 8v4.5"/><path d="M12 16h.01"/>`,
-  failed: `<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>`,
-};
-
-const icon = (status) =>
-  `<span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICONS[status] || ICONS.pending}</svg></span>`;
-
-const STAGES = [
-  ["extract", "Extract questions"],
-  ["ai", "Ask Gemini"],
-  ["select", "Select answers"],
-  ["submit", "Submit"],
-];
-
-function resetPipeline() {
-  pipelineEl.innerHTML = `<li class="eyebrow">run</li>` + STAGES.map(
-    ([id, title]) => `<li class="stage" data-stage="${id}" data-status="pending">
-      <div class="stage-row">${icon("pending")}<span class="stage-title">${title}</span><span class="badge">pending</span></div>
-      <ul class="subtasks"></ul>
-    </li>`,
-  ).join("");
-  pipelineEl.classList.add("visible");
-  countdownEl.classList.remove("visible");
+// The headline is the whole progress display: one word, rewritten in place.
+// busy also drives the waveform, so a state cannot animate without saying why.
+function setState(word, busy = false) {
+  stateTitle.textContent = word;
+  waveEl.hidden = !busy;
 }
 
-function hidePipeline() {
-  pipelineEl.classList.remove("visible");
-  pipelineEl.innerHTML = "";
-}
-
-// badge defaults to the status name; pass a detail to show something better
-// ("3 found", "gemini-2.0-flash") since that is what you actually want to read.
-function setStage(id, status, detail) {
-  const el = pipelineEl.querySelector(`[data-stage="${id}"]`);
-  if (!el) return;
-  el.dataset.status = status;
-  el.querySelector(".ico").outerHTML = icon(status);
-  const badge = el.querySelector(".badge");
-  const label = detail || status;
-  // Re-create the node so the pop animation restarts on every change.
-  if (badge.textContent !== label) {
-    const fresh = badge.cloneNode(false);
-    fresh.textContent = label;
-    badge.replaceWith(fresh);
-  }
-}
-
-// Per-question answers, shown under "Select answers" on the dashed connector.
-function setSubtasks(id, items) {
-  const el = pipelineEl.querySelector(`[data-stage="${id}"] .subtasks`);
-  if (!el) return;
-  el.innerHTML = items
+// Which answer went to which question. Renders nothing when empty.
+function showAnswers(letters, ok) {
+  answersEl.innerHTML = letters
     .map(
-      (it) =>
-        `<li class="subtask ${it.status === "failed" ? "miss" : ""}">${icon(it.status)}<span class="q">Q${it.n}</span><span class="a">${it.text}</span></li>`,
+      (letter, i) =>
+        `<span class="chip ${ok?.[i] ? "" : "miss"}"><b>${i + 1}</b>${letter}</span>`,
     )
     .join("");
-  el.classList.toggle("open", items.length > 0);
 }
 
-// -------------------------------------------------------------- dot-loader
-// 7x7 grid. Only runs during the Gemini call, which is the one stage slow
-// enough to need reassurance that something is still happening.
-const DOT_FRAMES = [
-  [24], [17, 23, 25, 31], [10, 16, 18, 30, 32, 38],
-  [3, 9, 11, 29, 33, 39, 45], [2, 8, 12, 28, 34, 40, 46],
-  [1, 7, 13, 21, 27, 35, 41, 47], [0, 6, 14, 20, 42, 48],
-  [1, 7, 13, 21, 27, 35, 41, 47], [2, 8, 12, 28, 34, 40, 46],
-  [3, 9, 11, 29, 33, 39, 45], [10, 16, 18, 30, 32, 38],
-  [17, 23, 25, 31],
-];
-
-let dotTimer = null;
-
-function startDots() {
-  if (!dotsEl.children.length) {
-    dotsEl.innerHTML = "<i></i>".repeat(49);
-  }
-  dotsEl.classList.remove("hidden");
-  const cells = [...dotsEl.children];
-  let f = 0;
-  stopDots();
-  dotTimer = setInterval(() => {
-    const frame = DOT_FRAMES[f % DOT_FRAMES.length];
-    cells.forEach((c, i) => c.classList.toggle("active", frame.includes(i)));
-    f++;
-  }, 110);
-}
-
-function stopDots() {
-  if (dotTimer) clearInterval(dotTimer);
-  dotTimer = null;
-  dotsEl.classList.add("hidden");
-  [...dotsEl.children].forEach((c) => c.classList.remove("active"));
+function clearAnswers() {
+  answersEl.innerHTML = "";
 }
 
 // --------------------------------------------------------------- countdown
@@ -147,7 +61,7 @@ function runCountdown(seconds = 5) {
         total - (Date.now() - startedAt),
         total,
       );
-      cdText.textContent = `Submitting in ${s}s…`;
+      cdText.textContent = `Submitting in ${s}s`;
       cdBar.style.width = `${percent}%`;
       return percent <= 0;
     };
@@ -196,12 +110,12 @@ function updateApiStatus(hasKey) {
   if (hasKey) {
     statusDot.classList.remove("inactive");
     statusDot.classList.add("active");
-    statusText.textContent = "API key configured";
+    statusText.textContent = "Key saved";
     apiSection.classList.add("hidden");
   } else {
     statusDot.classList.remove("active");
     statusDot.classList.add("inactive");
-    statusText.textContent = "No API key configured";
+    statusText.textContent = "No key";
   }
 }
 
@@ -235,7 +149,7 @@ saveApiBtn.addEventListener("click", async () => {
   try {
     // Listing models both validates the key and tells us which models
     // actually exist, so hardcoded names cannot rot.
-    showStatus("Validating API key...", "info");
+    showStatus("Checking key…", "info");
     saveApiBtn.disabled = true;
 
     // A new key must be checked against Google, not against a cached list.
@@ -257,7 +171,7 @@ saveApiBtn.addEventListener("click", async () => {
 
     // Update UI
     updateApiStatus(true);
-    showStatus("API key validated and saved successfully!", "success");
+    showStatus("Key saved.", "info");
 
     // Clear input and hide section
     apiKeyInput.value = "";
@@ -276,10 +190,11 @@ saveApiBtn.addEventListener("click", async () => {
 
 // Copy questions only
 copyBtn.addEventListener("click", async () => {
-  setButtonLoading(copyBtn, true, "Copying...");
+  copyBtn.disabled = true;
+  solveBtn.disabled = true;
   hideStatus();
-  hideAnswerBox();
-  hidePipeline();
+  clearAnswers();
+  setState("Reading", true);
 
   try {
     const [tab] = await chrome.tabs.query({
@@ -288,25 +203,30 @@ copyBtn.addEventListener("click", async () => {
     });
 
     if (!tab.url.includes("coursera.org")) {
-      throw new Error("This extension only works on Coursera pages");
+      throw new Error("This only works on a Coursera quiz page.");
     }
 
     const response = await extractQuestions(tab.id);
 
     if (!response || !response.questions || response.questions.length === 0) {
-      showStatus("No questions found on this page", "info");
+      setState("Nothing here");
+      showStatus("No questions found on this page.", "info");
       return;
     }
 
     await navigator.clipboard.writeText(response.cleanedText);
 
-    showStatus("✓ Questions copied to clipboard!", "success");
-    statsDiv.textContent = `Found ${response.questions.length} question${response.questions.length !== 1 ? "s" : ""}`;
+    const n = response.questions.length;
+    setState("Copied");
+    showStatus(`${n} question${n === 1 ? "" : "s"} on your clipboard`, "info");
   } catch (error) {
     console.error("Error:", error);
-    showStatus(`Error: ${error.message}`, "error");
+    setState("Failed");
+    showStatus(error.message, "error");
   } finally {
-    setButtonLoading(copyBtn, false, "Copy Questions Only");
+    waveEl.hidden = true;
+    copyBtn.disabled = false;
+    solveBtn.disabled = false;
   }
 });
 
@@ -316,16 +236,16 @@ solveBtn.addEventListener("click", async () => {
   await loadApiKey();
 
   if (!currentApiKey) {
-    showStatus("Please configure your Gemini API key first", "error");
+    showStatus("Add a Gemini API key first.", "error");
     apiSection.classList.remove("hidden");
     apiKeyInput.focus();
     return;
   }
 
-  setButtonLoading(solveBtn, true, "Solving...");
+  solveBtn.disabled = true;
+  copyBtn.disabled = true;
   hideStatus();
-  hideAnswerBox();
-  resetPipeline();
+  clearAnswers();
 
   try {
     const [tab] = await chrome.tabs.query({
@@ -334,95 +254,71 @@ solveBtn.addEventListener("click", async () => {
     });
 
     if (!tab.url.includes("coursera.org")) {
-      throw new Error("This extension only works on Coursera pages");
+      throw new Error("This only works on a Coursera quiz page.");
     }
 
-    // --- 1. extract ---
-    setStage("extract", "in-progress");
+    setState("Reading", true);
     const response = await extractQuestions(tab.id);
 
     if (!response || !response.questions || response.questions.length === 0) {
-      setStage("extract", "need-help", "none found");
-      showStatus("No questions found on this page", "info");
+      setState("Nothing here");
+      showStatus("No questions found on this page.", "info");
       return;
     }
     const n = response.questions.length;
-    setStage("extract", "completed", `${n} found`);
 
-    // --- 2. ask gemini ---
-    setStage("ai", "in-progress");
-    startDots();
-    let aiResponse;
-    try {
-      aiResponse = await getAIAnswers(response.cleanedText, n);
-    } finally {
-      stopDots();
-    }
-    setStage("ai", "completed", lastModelUsed || "answered");
+    setState("Thinking", true);
+    showStatus(`${n} question${n === 1 ? "" : "s"}`, "info");
+    const aiResponse = await getAIAnswers(response.cleanedText, n);
 
-    const formattedAnswers = formatAnswers(response.questions, aiResponse);
-    answerText.textContent = formattedAnswers;
-    answerBox.classList.add("visible");
-    await navigator.clipboard.writeText(formattedAnswers);
-
-    // --- 3. select (reversible on the page) ---
-    setStage("select", "in-progress");
-    const report = await autoSelectAnswers(tab.id, aiResponse, response.optionIds);
-
-    setSubtasks(
-      "select",
-      (report.answers || []).map((letter, i) => ({
-        n: i + 1,
-        text: letter,
-        status: report.ok?.[i] ? "completed" : "failed",
-      })),
+    // Clipboard still carries the full transcript; the popup no longer
+    // reprints it.
+    await navigator.clipboard.writeText(
+      formatAnswers(response.questions, aiResponse),
     );
 
+    setState("Answering", true);
+    const report = await autoSelectAnswers(tab.id, aiResponse, response.optionIds);
+    showAnswers(report.answers || [], report.ok || []);
+
     if (!report.ready) {
-      setStage("select", "failed", `${report.selected || 0}/${n}`);
-      setStage("submit", "failed", "skipped");
+      setState("Stopped");
       showStatus(
-        `Answers copied, but nothing was submitted: ${report.reason || "unknown reason"}. Submit manually.`,
+        `${report.reason || "could not select the answers"}. Answers are on your clipboard - submit yourself.`,
         "error",
       );
       return;
     }
-    setStage("select", "completed", `${report.selected}/${n}`);
 
-    // --- 4. submit, after a cancellable pause ---
-    setStage("submit", "in-progress", "5s");
-    const go = await runCountdown(5);
+    setState("Ready to submit");
+    showStatus(`${lastModelUsed || "gemini"} answered ${report.selected} of ${n}`, "info");
 
-    if (!go) {
-      setStage("submit", "need-help", "cancelled");
-      showStatus(
-        "Cancelled. Answers are selected on the page - submit yourself when ready.",
-        "info",
-      );
+    if (!(await runCountdown(5))) {
+      setState("Cancelled");
+      showStatus("Answers are selected on the page. Submit when you want.", "info");
       return;
     }
 
+    setState("Submitting", true);
     const submitReport = await submitQuiz(tab.id);
     if (submitReport?.submitted) {
-      setStage("submit", "completed", "done");
-      showStatus("✓ Submitted, and answers copied to clipboard.", "success");
+      setState("Submitted");
+      showStatus(`${report.selected} of ${n} answered`, "info");
     } else {
-      setStage("submit", "failed", "blocked");
+      setState("Stopped");
       showStatus(
-        `Answers are selected but submit failed: ${submitReport?.reason || "unknown reason"}. Submit manually.`,
+        `${submitReport?.reason || "submit failed"}. Answers are selected - submit yourself.`,
         "error",
       );
     }
   } catch (error) {
     console.error("Error:", error);
-    stopDots();
-    // Mark whichever stage was mid-flight, so the failure has a location.
-    const running = pipelineEl.querySelector('[data-status="in-progress"]');
-    if (running) setStage(running.dataset.stage, "failed", "error");
+    setState("Failed");
     showStatus(error.message, "error");
   } finally {
-    stopDots();
-    setButtonLoading(solveBtn, false, "Solve & Submit");
+    waveEl.hidden = true;
+    copyBtn.disabled = false;
+    solveBtn.disabled = false;
   }
 });
 
@@ -873,19 +769,8 @@ function showStatus(message, type) {
 // Utility: Hide status message
 function hideStatus() {
   statusDiv.style.display = "none";
-  statsDiv.textContent = "";
 }
 
-// Utility: Hide answer box
-function hideAnswerBox() {
-  answerBox.classList.remove("visible");
-}
-
-// Utility: Set button loading state
-function setButtonLoading(button, loading, text) {
-  button.disabled = loading;
-  (button.querySelector("span") || button).textContent = text;
-}
 
 // Direct extraction function
 function extractQuestionsDirectly() {

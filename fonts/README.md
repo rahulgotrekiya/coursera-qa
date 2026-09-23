@@ -1,14 +1,12 @@
-# Inter Tight
+# Fonts
 
-`inter-tight.woff2` — Inter Tight variable (weights 100–900), latin subset, 44 KB.
+| File | Family | Use | Size |
+|---|---|---|---|
+| `garamond.woff2` | EB Garamond 400 | The state headline, and nothing else | 23 KB |
+| `figtree.woff2`  | Figtree 300–900 (variable) | Every other piece of text | 20 KB |
 
-Source: Google Fonts (Inter Tight v9), https://github.com/rsms/inter
-Licence: SIL Open Font License 1.1 — see `LICENSE-Inter.txt`.
+Both latin subsets from Google Fonts, SIL Open Font License 1.1
+(`LICENSE-OFL.txt`). Bundled rather than linked because extension CSP blocks
+font CDNs and a popup must not wait on the network to draw.
 
-Chosen because the GSAP design language runs on Mori, a humanist sans that is
-commercial. The GSAP style guide names Inter Tight as its first substitute;
-its tighter default tracking holds up at display weights better than plain
-Inter, which reads too wide and too cold against cream-on-black.
-
-Latin subset only. Anything outside its unicode-range falls back to the system
-font, which keeps the file at 44 KB rather than ~350 KB.
+Latin only: anything outside the subset falls back to the system font.

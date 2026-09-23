@@ -3,52 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <style>
-      /* Mori is commercial; the GSAP guide names Inter Tight as its substitute.
-         Bundled locally because extension CSP blocks font CDNs. */
       @font-face {
-        font-family: "Inter Tight";
-        src: url("fonts/inter-tight.woff2") format("woff2");
-        font-weight: 100 900;
-        font-style: normal;
+        font-family: "EB Garamond";
+        src: url("fonts/garamond.woff2") format("woff2");
+        font-weight: 400;
+        font-display: block;
+      }
+
+      @font-face {
+        font-family: "Figtree";
+        src: url("fonts/figtree.woff2") format("woff2");
+        font-weight: 300 900;
         font-display: block;
       }
 
       :root {
-        /* Surfaces: never #000, never #fff - the warmth is the character. */
-        --canvas: #0e100f;
-        --panel: #191919;
-        --cream: #fffce1;
-        --muted: #7c7c6f;
-        --hairline: #42433d;
+        --cream: #ffffeb;
+        --ink: #1a1a1a;
+        --lavender: #f0d7ff;
+        --forest: #034f46;
+        --ember: #ffa946;
+        --fog: #8a8a80;
+        --stone: #e4e4d0;
 
-        /* Brand green: the only chromatic control in the system. */
-        --green: #0ae448;
-        --green-soft: #abff84;
-        --gradient-green: linear-gradient(
-          114.41deg,
-          #0ae448 20.74%,
-          #abff84 65.5%
-        );
-
-        /* Taxonomy: one hue per pipeline stage, never reused across stages.
-           GSAP maps colors to disciplines; here the disciplines are the four
-           things this extension does. */
-        --stage-extract: #00bae2;
-        --stage-ai: #9d95ff;
-        --stage-select: #fec5fb;
-        --stage-submit: #ff8709;
-
-        /* Functional, NOT taxonomy. GSAP's palette has no failure state, but
-           this extension can irreversibly submit a graded attempt, so one
-           unmistakable alert color is load-bearing. Used only for errors. */
-        --alert: #ff5c5c;
-
-        --font:
-          "Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-          Roboto, sans-serif;
-
-        --radius-card: 8px;
-        --radius-pill: 100px;
+        --serif: "EB Garamond", Georgia, serif;
+        --sans: "Figtree", ui-sans-serif, system-ui, -apple-system, sans-serif;
       }
 
       * {
@@ -58,250 +37,169 @@
       }
 
       body {
-        width: 420px;
-        font-family: var(--font);
-        background: var(--canvas);
-        color: var(--cream);
+        width: 380px;
+        background: var(--cream);
+        color: var(--ink);
+        font-family: var(--sans);
         font-size: 16px;
-        line-height: 1.15;
-        letter-spacing: -0.01em;
+        line-height: 1.3;
         -webkit-font-smoothing: antialiased;
-        /* Digits must not reflow as the countdown ticks 5 -> 4 -> 3. */
         font-variant-numeric: tabular-nums;
       }
 
-      /* Curly-bracket eyebrow: the system's recurring typographic signature. */
-      .eyebrow {
-        font-size: 14px;
-        font-weight: 400;
-        color: var(--muted);
-        margin-bottom: 12px;
-      }
+      /* ---------- masthead ---------- */
 
-      .eyebrow::before {
-        content: "{ ";
-      }
-
-      .eyebrow::after {
-        content: " }";
-      }
-
-      /* ---------- header ---------- */
-
-      .header {
+      .masthead {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
         gap: 16px;
-        padding: 24px 24px 20px;
-        border-bottom: 1px solid var(--hairline);
+        padding: 24px 24px 0;
       }
 
-      .header h1 {
-        font-size: 32px;
-        font-weight: 600;
-        line-height: 0.95;
-        letter-spacing: -0.02em;
-      }
-
-      .header p {
-        font-size: 14px;
+      .wordmark {
+        font-family: var(--serif);
+        font-size: 24px;
         font-weight: 400;
-        color: var(--muted);
-        margin-top: 8px;
-        letter-spacing: -0.14px;
       }
 
-      /* dot-loader: 7x7 grid, frames driven from popup.js */
-      .dots {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
+      /* Waveform pill: the system's busy indicator. Bars are pure CSS, so
+         there is no timer to start, stop, or leak. */
+      .wave {
+        display: flex;
+        align-items: center;
         gap: 3px;
-        flex-shrink: 0;
-        margin-top: 4px;
+        height: 28px;
+        padding: 0 12px;
+        border: 2px solid var(--ink);
+        border-radius: 9999px;
       }
 
-      .dots.hidden {
-        display: none;
-      }
-
-      .dots > i {
-        width: 4px;
-        height: 4px;
+      .wave > i {
+        width: 3px;
+        height: 6px;
+        background: var(--ink);
         border-radius: 1px;
-        background: var(--hairline);
-        transition: background 0.12s linear;
+        animation: pulse 0.9s ease-in-out infinite;
       }
 
-      .dots > i.active {
-        background: var(--cream);
+      .wave > i:nth-child(2) {
+        animation-delay: 0.12s;
       }
+      .wave > i:nth-child(3) {
+        animation-delay: 0.24s;
+      }
+      .wave > i:nth-child(4) {
+        animation-delay: 0.36s;
+      }
+      .wave > i:nth-child(5) {
+        animation-delay: 0.48s;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          height: 6px;
+        }
+        50% {
+          height: 16px;
+        }
+      }
+
+      /* ---------- state ---------- */
 
       .content {
-        padding: 20px 24px 24px;
+        padding: 24px;
       }
 
-      /* ---------- api key ---------- */
+      /* Authority comes from scale, not weight - this stays at 400. */
+      #stateTitle {
+        font-family: var(--serif);
+        font-weight: 400;
+        font-size: 48px;
+        line-height: 0.95;
+        letter-spacing: -1.44px;
+      }
 
-      .api-status {
+      #status {
+        margin-top: 10px;
+        font-size: 16px;
+        color: var(--fog);
+        display: none;
+        word-break: break-word;
+      }
+
+      #status.error {
+        color: var(--ink);
+        border-left: 2px solid var(--ink);
+        padding-left: 12px;
+      }
+
+      /* Answer chips: the deliberately tight 8px radius, against a popup
+         otherwise built from pills. */
+      #answers {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding-bottom: 16px;
-        margin-bottom: 20px;
-        border-bottom: 1px solid var(--hairline);
-        font-size: 14px;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 16px;
       }
 
-      .api-left {
-        display: flex;
-        align-items: center;
-        min-width: 0;
-      }
-
-      /* Flat dot, no glow - depth never comes from box-shadow here. */
-      .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        margin-right: 10px;
-        flex-shrink: 0;
-      }
-
-      .status-dot.active {
-        background: var(--green);
-      }
-
-      .status-dot.inactive {
-        background: var(--hairline);
-      }
-
-      .status-text {
-        color: var(--muted);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      /* Ghost nav link: no background, no border, color shift on hover. */
-      .api-status button {
-        background: none;
-        border: none;
-        color: var(--muted);
-        font-size: 14px;
-        font-family: inherit;
-        cursor: pointer;
-        padding: 0;
-        flex-shrink: 0;
-        transition: color 0.2s;
-      }
-
-      .api-status button:hover {
-        color: var(--cream);
-      }
-
-      .api-section {
-        margin-bottom: 20px;
-      }
-
-      .api-section.hidden {
+      #answers:empty {
         display: none;
       }
 
-      label {
-        display: block;
+      .chip {
         font-size: 14px;
-        font-weight: 400;
-        margin-bottom: 8px;
-        color: var(--muted);
-      }
-
-      input[type="password"],
-      input[type="text"] {
-        width: 100%;
-        padding: 13px 16px;
-        border: 1px solid var(--hairline);
-        border-radius: var(--radius-pill);
-        font-size: 16px;
-        background: transparent;
+        font-weight: 500;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: var(--ink);
         color: var(--cream);
-        font-family: inherit;
-        transition: border-color 0.2s;
       }
 
-      input::placeholder {
-        color: var(--muted);
+      .chip.miss {
+        background: transparent;
+        color: var(--ink);
+        border: 2px solid var(--ink);
+        padding: 4px 8px;
       }
 
-      input:focus {
-        outline: none;
-        border-color: var(--cream);
+      .chip b {
+        font-weight: 500;
+        opacity: 0.5;
+        margin-right: 5px;
       }
 
-      .help-text {
-        font-size: 14px;
-        color: var(--muted);
-        margin: 10px 2px 14px;
-        line-height: 1.4;
-      }
+      /* ---------- actions ---------- */
 
-      .help-text a {
-        color: var(--green);
-        text-decoration: none;
+      .actions {
+        margin-top: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
       }
-
-      .help-text a:hover {
-        text-decoration: underline;
-      }
-
-      /* ---------- buttons: outlined pills only, never filled ---------- */
 
       .btn {
         width: 100%;
-        padding: 15px 24px;
-        border: 1px solid var(--cream);
-        border-radius: var(--radius-pill);
-        background: transparent;
-        color: var(--cream);
-        font-size: 18px;
-        font-weight: 600;
-        line-height: 1.05;
-        letter-spacing: -0.011em;
+        padding: 16px 24px;
+        border: 2px solid var(--ink);
+        border-radius: 12px;
+        background: var(--cream);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 16px;
+        font-weight: 500;
         cursor: pointer;
-        font-family: inherit;
-        transition: opacity 0.2s;
+      }
+
+      .btn-cta {
+        background: var(--lavender);
       }
 
       .btn:hover:not(:disabled) {
-        opacity: 0.8;
-      }
-
-      /* The one chromatic escalation: a gradient stroke, still not a fill. */
-      .btn-cta {
-        border: 1.5px solid transparent;
-        background:
-          linear-gradient(var(--canvas), var(--canvas)) padding-box,
-          var(--gradient-green) border-box;
-      }
-
-      .btn-quiet {
-        border-color: var(--hairline);
-        color: var(--muted);
-        font-size: 16px;
-        font-weight: 400;
-      }
-
-      .btn-quiet:hover:not(:disabled) {
-        border-color: var(--cream);
+        background: var(--ink);
         color: var(--cream);
-        opacity: 1;
-      }
-
-      .btn-alert {
-        border-color: var(--alert);
-        color: var(--alert);
-        font-size: 16px;
       }
 
       .btn:disabled {
@@ -309,212 +207,31 @@
         cursor: not-allowed;
       }
 
-      .actions {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      /* ---------- pipeline ---------- */
-
-      .pipeline {
-        list-style: none;
-        margin-top: 24px;
-        padding-top: 20px;
-        border-top: 1px solid var(--hairline);
-        display: none;
-      }
-
-      .pipeline.visible {
-        display: block;
-      }
-
-      .stage {
-        /* Each stage owns a hue; status is carried by icon shape, not color. */
-        --hue: var(--muted);
-      }
-
-      .stage[data-stage="extract"] {
-        --hue: var(--stage-extract);
-      }
-
-      .stage[data-stage="ai"] {
-        --hue: var(--stage-ai);
-      }
-
-      .stage[data-stage="select"] {
-        --hue: var(--stage-select);
-      }
-
-      .stage[data-stage="submit"] {
-        --hue: var(--stage-submit);
-      }
-
-      .stage + .stage {
-        border-top: 1px solid var(--hairline);
-      }
-
-      .stage-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 0;
-      }
-
-      .stage-title {
-        flex: 1;
-        min-width: 0;
+      /* Ghost/text button: no background, no border. */
+      .link {
+        background: none;
+        border: none;
+        padding: 0;
+        font-family: var(--sans);
         font-size: 16px;
-        font-weight: 400;
-        color: var(--muted);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        transition: color 0.2s;
+        color: var(--ink);
+        cursor: pointer;
       }
 
-      .stage[data-status="in-progress"] .stage-title,
-      .stage[data-status="completed"] .stage-title {
-        color: var(--cream);
+      .link:hover:not(:disabled) {
+        text-decoration: underline;
       }
 
-      /* Small tag: 8px radius, outlined, never filled. */
-      .badge {
-        font-size: 14px;
-        font-weight: 400;
-        padding: 3px 9px;
-        border-radius: 8px;
-        border: 1px solid var(--hairline);
-        color: var(--muted);
-        flex-shrink: 0;
-        white-space: nowrap;
-        animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-
-      .stage[data-status="in-progress"] .badge,
-      .stage[data-status="completed"] .badge {
-        border-color: var(--hue);
-        color: var(--hue);
-      }
-
-      .stage[data-status="need-help"] .badge {
-        border-color: var(--cream);
-        color: var(--cream);
-      }
-
-      .stage[data-status="failed"] .badge {
-        border-color: var(--alert);
-        color: var(--alert);
-      }
-
-      @keyframes pop {
-        0% {
-          transform: scale(1);
-        }
-        45% {
-          transform: scale(1.06);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-
-      /* Icons are stroked ~1.5px and monochrome, per the system. */
-      .ico {
-        width: 18px;
-        height: 18px;
-        flex-shrink: 0;
-        display: block;
-        color: var(--muted);
-      }
-
-      .stage[data-status="in-progress"] .ico,
-      .stage[data-status="completed"] .ico {
-        color: var(--hue);
-      }
-
-      .stage[data-status="need-help"] .ico {
-        color: var(--cream);
-      }
-
-      .stage[data-status="failed"] .ico {
-        color: var(--alert);
-      }
-
-      .ico svg {
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
-
-      .ico .spin {
-        transform-origin: 50% 50%;
-        animation: spin 2.4s linear infinite;
-      }
-
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      /* subtasks: per-question answers on a hairline */
-      .subtasks {
-        list-style: none;
-        margin: 0 0 4px 9px;
-        padding-left: 18px;
-        border-left: 1px solid var(--hairline);
-        overflow: hidden;
-        max-height: 0;
-        opacity: 0;
-        transition:
-          max-height 0.25s cubic-bezier(0.2, 0.65, 0.3, 0.9),
-          opacity 0.2s;
-      }
-
-      .subtasks.open {
-        max-height: 420px;
-        opacity: 1;
-        margin-bottom: 12px;
-      }
-
-      .subtask {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 4px 0;
-        font-size: 14px;
-        color: var(--cream);
-      }
-
-      .subtask .ico {
-        width: 14px;
-        height: 14px;
-        color: var(--stage-select);
-      }
-
-      .subtask.miss .ico {
-        color: var(--alert);
-      }
-
-      .subtask .q {
-        color: var(--muted);
-        flex-shrink: 0;
-      }
-
-      .subtask .a {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+      .link:disabled {
+        color: var(--fog);
+        cursor: not-allowed;
       }
 
       /* ---------- countdown ---------- */
 
       .countdown {
         display: none;
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 1px solid var(--hairline);
+        margin-top: 24px;
       }
 
       .countdown.visible {
@@ -523,106 +240,104 @@
 
       .cd-head {
         font-size: 16px;
-        font-weight: 400;
-        margin-bottom: 12px;
-        color: var(--cream);
+        margin-bottom: 10px;
       }
 
       .cd-track {
-        height: 2px;
-        background: var(--hairline);
+        height: 8px;
+        border: 2px solid var(--ink);
+        border-radius: 9999px;
         overflow: hidden;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
       }
 
       .cd-bar {
         height: 100%;
         width: 100%;
-        background: var(--stage-submit);
+        background: var(--ember);
       }
 
-      /* ---------- status / answers ---------- */
+      /* ---------- key ---------- */
 
-      #status {
-        margin-top: 20px;
-        padding-left: 14px;
-        border-left: 2px solid var(--hairline);
+      .key-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 2px solid var(--stone);
         font-size: 14px;
-        line-height: 1.4;
+      }
+
+      .key-left {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 10px;
+        flex-shrink: 0;
+        background: var(--fog);
+      }
+
+      .status-dot.active {
+        background: var(--forest);
+      }
+
+      .status-text {
+        color: var(--fog);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .key-bar .link {
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+
+      .api-section {
+        margin-top: 16px;
+      }
+
+      .api-section.hidden {
         display: none;
-        word-break: break-word;
-        color: var(--muted);
       }
 
-      #status.success {
-        border-left-color: var(--green);
-        color: var(--cream);
+      input[type="password"] {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid var(--ink);
+        border-radius: 12px;
+        background: var(--cream);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 16px;
       }
 
-      #status.error {
-        border-left-color: var(--alert);
-        color: var(--alert);
+      input::placeholder {
+        color: var(--fog);
       }
 
-      #status.info {
-        border-left-color: var(--hairline);
-        color: var(--muted);
+      input:focus {
+        outline: none;
       }
 
-      .stats {
-        margin-top: 12px;
+      .help {
         font-size: 14px;
-        color: var(--muted);
+        color: var(--fog);
+        margin: 10px 0 14px;
       }
 
-      .answer-box {
-        margin-top: 20px;
-        padding: 24px;
-        background: var(--panel);
-        border-radius: var(--radius-card);
-        display: none;
-        max-height: 300px;
-        overflow-y: auto;
+      .help a {
+        color: var(--ink);
       }
 
-      .answer-box.visible {
-        display: block;
-      }
-
-      .answer-box h3 {
-        font-size: 14px;
-        font-weight: 400;
-        margin-bottom: 14px;
-        color: var(--muted);
-      }
-
-      .answer-box h3::before {
-        content: "{ ";
-      }
-
-      .answer-box h3::after {
-        content: " }";
-      }
-
-      .answer-box pre {
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        font-family: inherit;
-        font-size: 14px;
-        line-height: 1.4;
-        color: var(--cream);
-      }
-
-      .answer-box::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      .answer-box::-webkit-scrollbar-thumb {
-        background: var(--hairline);
-        border-radius: 3px;
-      }
-
-      /* Respect the OS setting - all motion here is decorative. */
       @media (prefers-reduced-motion: reduce) {
         *,
         *::before,
@@ -635,68 +350,46 @@
     </style>
   </head>
   <body>
-    <div class="header">
-      <div class="brand">
-        <h1>Coursera<br />Solver</h1>
-        <p>Answers quizzes with Gemini</p>
+    <div class="masthead">
+      <span class="wordmark">Solver</span>
+      <div class="wave" id="wave" hidden>
+        <i></i><i></i><i></i><i></i><i></i>
       </div>
-      <div id="dots" class="dots hidden"></div>
     </div>
 
     <div class="content">
-      <!-- API Key Status -->
-      <div id="apiStatusBar" class="api-status">
-        <div class="api-left">
-          <span class="status-dot inactive" id="statusDot"></span>
-          <span class="status-text" id="statusText">No API key configured</span>
-        </div>
-        <button id="changeApiBtn">Change</button>
+      <h1 id="stateTitle">Ready</h1>
+      <div id="status"></div>
+      <div id="answers"></div>
+
+      <div id="mainActions" class="actions">
+        <button class="btn btn-cta" id="solveBtn">Solve &amp; Submit</button>
+        <button class="link" id="copyBtn">Copy questions</button>
       </div>
 
-      <!-- API Key Input Section (initially hidden) -->
+      <div id="countdown" class="countdown">
+        <div class="cd-head" id="cdText">Submitting…</div>
+        <div class="cd-track"><div class="cd-bar" id="cdBar"></div></div>
+        <button class="btn" id="cancelBtn">Cancel</button>
+      </div>
+
+      <div class="key-bar" id="apiStatusBar">
+        <div class="key-left">
+          <span class="status-dot" id="statusDot"></span>
+          <span class="status-text" id="statusText">No key</span>
+        </div>
+        <button class="link" id="changeApiBtn">Change</button>
+      </div>
+
       <div id="apiSection" class="api-section hidden">
-        <p class="eyebrow">Gemini API Key</p>
-        <label for="apiKey" hidden>Gemini API Key</label>
-        <input
-          type="password"
-          id="apiKey"
-          placeholder="Paste your key"
-        />
-        <p class="help-text">
+        <input type="password" id="apiKey" placeholder="Gemini API key" />
+        <p class="help">
           Free key from
           <a href="https://aistudio.google.com/app/apikey" target="_blank"
             >Google AI Studio</a
           >
         </p>
-        <button class="btn" id="saveApiBtn">Save Key</button>
-      </div>
-
-      <!-- Main Actions -->
-      <div id="mainActions" class="actions">
-        <button class="btn btn-cta" id="solveBtn">
-          <span id="solveBtnText">Solve &amp; Submit</span>
-        </button>
-        <button class="btn btn-quiet" id="copyBtn">Copy Questions Only</button>
-      </div>
-
-      <!-- Pipeline -->
-      <ul id="pipeline" class="pipeline"></ul>
-
-      <!-- Submit countdown -->
-      <div id="countdown" class="countdown">
-        <div class="cd-head" id="cdText">Submitting…</div>
-        <div class="cd-track"><div class="cd-bar" id="cdBar"></div></div>
-        <button class="btn btn-alert" id="cancelBtn">Cancel</button>
-      </div>
-
-      <!-- Status Messages -->
-      <div id="status"></div>
-      <div id="stats" class="stats"></div>
-
-      <!-- Answer Display -->
-      <div id="answerBox" class="answer-box">
-        <h3>AI Answers</h3>
-        <pre id="answerText"></pre>
+        <button class="btn" id="saveApiBtn">Save</button>
       </div>
     </div>
 
