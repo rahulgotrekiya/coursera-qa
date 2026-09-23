@@ -5,9 +5,27 @@ answers, and selects them on the page.
 
 **It does not submit.** You tick the honor-code box and press Submit yourself.
 
+[![Latest release](https://img.shields.io/github/v/release/rahulgotrekiya/coursera-qa?label=latest&color=brightgreen)](https://github.com/rahulgotrekiya/coursera-qa/releases/latest)
 ![Chrome](https://img.shields.io/badge/Chrome-114%2B-green?logo=googlechrome)
 ![License](https://img.shields.io/badge/License-MIT-blue)
-![Version](https://img.shields.io/badge/Version-4.0.0-brightgreen)
+
+---
+
+## Latest release — [v4.0.0](https://github.com/rahulgotrekiya/coursera-qa/releases/tag/v4.0.0)
+
+**Breaking: the extension no longer submits, and no longer ticks the
+honor-code checkbox.** It selects the answers and stops.
+
+- **Side panel** replaces the popup, so it stays open while you work in the
+  page. Chrome 114+.
+- **Ctrl+Shift+Y** starts a run with no panel open.
+- The run lives in a **service worker**, so closing the panel no longer kills
+  an in-flight Gemini request.
+- **Fixed:** submit silently did nothing on `aria-disabled` controls, and
+  reported success anyway.
+- Rebuilt UI, new icon, docs consolidated into this file.
+
+Every version: [releases](https://github.com/rahulgotrekiya/coursera-qa/releases).
 
 ---
 
