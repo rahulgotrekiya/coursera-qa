@@ -270,3 +270,32 @@ assert.ok(
 );
 
 console.log("ok: side panel + shortcut");
+
+// --- icons ---
+// A malformed or wrongly-sized icon is not an error Chrome reports; it just
+// shows a generic puzzle piece, which is easy to ship without noticing.
+for (const size of [16, 48, 128]) {
+  const file = `icon${size}.png`;
+  assert.ok(existsSync(file), `${file} is missing`);
+  const buf = readFileSync(file);
+  assert.strictEqual(
+    buf.subarray(1, 4).toString("latin1"),
+    "PNG",
+    `${file} is not a PNG`,
+  );
+  // IHDR width/height sit at fixed offsets right after the signature.
+  assert.strictEqual(buf.readUInt32BE(16), size, `${file} width is not ${size}`);
+  assert.strictEqual(buf.readUInt32BE(20), size, `${file} height is not ${size}`);
+  assert.strictEqual(
+    manifest.icons?.[String(size)],
+    file,
+    `manifest must list ${file}`,
+  );
+  assert.strictEqual(
+    manifest.action?.default_icon?.[String(size)],
+    file,
+    `action must list ${file}`,
+  );
+}
+
+console.log("ok: icons");
